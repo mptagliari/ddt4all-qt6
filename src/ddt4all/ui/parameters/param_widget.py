@@ -571,6 +571,9 @@ class ParamWidget(widgets.QWidget):
                 self.main_protocol_status.setText("KWP @ " + self.ecurequestsparser.funcaddr)
             elif self.ecurequestsparser.ecu_protocol.upper() == "ISO8":
                 self.main_protocol_status.setText("ISO8 @ " + self.ecurequestsparser.funcaddr)
+            elif self.ecurequestsparser.ecu_protocol.upper() == "J1850VPW":
+                # OBD-II has no diagnostic session to open
+                self.main_protocol_status.setText("J1850 VPW @ " + self.ecurequestsparser.funcaddr)
             elif self.ecurequestsparser.ecu_protocol.upper() == "DOIP":
                 self.startDiagnosticSession()
                 self.main_protocol_status.setText("DoIP @ " + self.ecurequestsparser.funcaddr)

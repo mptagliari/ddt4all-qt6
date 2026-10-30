@@ -1,0 +1,393 @@
+{
+ "autoidents": [],
+ "ecuname": "Dodge Ram 2500 5.9 Cummins - PCM (OBD-II)",
+ "obd": {
+  "protocol": "J1850VPW",
+  "funcaddr": "10",
+  "funcname": "PCM"
+ },
+ "endian": "Big",
+ "requests": [
+  {
+   "minbytes": 4,
+   "sentbytes": "010C",
+   "name": "PID 0C Rotação do motor",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Rotação do motor": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 4,
+   "sentbytes": "0123",
+   "name": "PID 23 Pressão do rail (real)",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Pressão do rail (real)": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 4,
+   "sentbytes": "0142",
+   "name": "PID 42 Tensão do módulo",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Tensão do módulo": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "0105",
+   "name": "PID 05 Temperatura do líquido",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Temperatura do líquido": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "010F",
+   "name": "PID 0F Temperatura do ar de admissão",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Temperatura do ar de admissão": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "010B",
+   "name": "PID 0B Pressão do coletor (MAP)",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Pressão do coletor (MAP)": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "0133",
+   "name": "PID 33 Pressão barométrica",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Pressão barométrica": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "0111",
+   "name": "PID 11 Posição do pedal/acelerador",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Posição do pedal/acelerador": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "0104",
+   "name": "PID 04 Carga calculada do motor",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Carga calculada do motor": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 3,
+   "sentbytes": "010D",
+   "name": "PID 0D Velocidade do veículo",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Velocidade do veículo": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 6,
+   "sentbytes": "0100",
+   "name": "PID 00 PIDs suportados 01-20",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "PIDs suportados 01-20": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 6,
+   "sentbytes": "0120",
+   "name": "PID 20 PIDs suportados 21-40",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "PIDs suportados 21-40": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 6,
+   "sentbytes": "0140",
+   "name": "PID 40 PIDs suportados 41-60",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "PIDs suportados 41-60": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 6,
+   "sentbytes": "0101",
+   "name": "PID 01 Estado do monitor",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Estado do monitor (MIL + contagem)": {
+     "firstbyte": 3,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 8,
+   "sentbytes": "03",
+   "name": "Modo 03 Códigos armazenados (3 primeiros)",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Código armazenados 1 (hex)": {
+     "firstbyte": 2,
+     "bitoffset": 0,
+     "ref": true
+    },
+    "Código armazenados 2 (hex)": {
+     "firstbyte": 4,
+     "bitoffset": 0,
+     "ref": true
+    },
+    "Código armazenados 3 (hex)": {
+     "firstbyte": 6,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  },
+  {
+   "minbytes": 8,
+   "sentbytes": "07",
+   "name": "Modo 07 Códigos pendentes (3 primeiros)",
+   "deny_sds": [],
+   "receivebyte_dataitems": {
+    "Código pendentes 1 (hex)": {
+     "firstbyte": 2,
+     "bitoffset": 0,
+     "ref": true
+    },
+    "Código pendentes 2 (hex)": {
+     "firstbyte": 4,
+     "bitoffset": 0,
+     "ref": true
+    },
+    "Código pendentes 3 (hex)": {
+     "firstbyte": 6,
+     "bitoffset": 0,
+     "ref": true
+    }
+   }
+  }
+ ],
+ "data": {
+  "Rotação do motor": {
+   "bitscount": 16,
+   "scaled": true,
+   "bytescount": 2,
+   "step": 0.25,
+   "offset": 0,
+   "unit": "rpm",
+   "comment": "(256*A + B) / 4"
+  },
+  "Pressão do rail (real)": {
+   "bitscount": 16,
+   "scaled": true,
+   "bytescount": 2,
+   "step": 0.1,
+   "offset": 0,
+   "unit": "bar",
+   "comment": "(256*A + B) * 10 kPa = *0,1 bar. Sensor de rail; o valor desejado não existe em PID padrão"
+  },
+  "Tensão do módulo": {
+   "bitscount": 16,
+   "scaled": true,
+   "bytescount": 2,
+   "step": 0.001,
+   "offset": 0,
+   "unit": "V",
+   "comment": "(256*A + B) / 1000"
+  },
+  "Temperatura do líquido": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 1,
+   "offset": -40,
+   "unit": "°C",
+   "comment": "A - 40"
+  },
+  "Temperatura do ar de admissão": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 1,
+   "offset": -40,
+   "unit": "°C",
+   "comment": "A - 40. -40 = circuito aberto"
+  },
+  "Pressão do coletor (MAP)": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 1,
+   "offset": 0,
+   "unit": "kPa",
+   "comment": "A"
+  },
+  "Pressão barométrica": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 1,
+   "offset": 0,
+   "unit": "kPa",
+   "comment": "A. Ao nível do mar ≈ 100"
+  },
+  "Posição do pedal/acelerador": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 0.39215686274509803,
+   "offset": 0,
+   "unit": "%",
+   "comment": "A * 100 / 255"
+  },
+  "Carga calculada do motor": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 0.39215686274509803,
+   "offset": 0,
+   "unit": "%",
+   "comment": "A * 100 / 255"
+  },
+  "Velocidade do veículo": {
+   "bitscount": 8,
+   "scaled": true,
+   "bytescount": 1,
+   "step": 1,
+   "offset": 0,
+   "unit": "km/h",
+   "comment": "A"
+  },
+  "PIDs suportados 01-20": {
+   "bitscount": 32,
+   "byte": true,
+   "bytescount": 4,
+   "comment": "Máscara de 32 bits: cada bit é um PID suportado"
+  },
+  "PIDs suportados 21-40": {
+   "bitscount": 32,
+   "byte": true,
+   "bytescount": 4,
+   "comment": "Máscara de 32 bits: cada bit é um PID suportado"
+  },
+  "PIDs suportados 41-60": {
+   "bitscount": 32,
+   "byte": true,
+   "bytescount": 4,
+   "comment": "Máscara de 32 bits: cada bit é um PID suportado"
+  },
+  "Estado do monitor (MIL + contagem)": {
+   "bitscount": 32,
+   "byte": true,
+   "bytescount": 4,
+   "comment": "1º byte: bit 7 = MIL acesa; bits 0-6 = quantidade de códigos armazenados (0x90 = MIL acesa, 16 códigos)"
+  },
+  "Código armazenados 1 (hex)": {
+   "bitscount": 16,
+   "byte": true,
+   "bytescount": 2,
+   "comment": "2 bytes do DTC: 0237 = P0237. 1º dígito: 0=P 4=C 8=B C=U (2 bits) + 2º dígito (2 bits)"
+  },
+  "Código armazenados 2 (hex)": {
+   "bitscount": 16,
+   "byte": true,
+   "bytescount": 2,
+   "comment": "2 bytes do DTC: 0237 = P0237. 1º dígito: 0=P 4=C 8=B C=U (2 bits) + 2º dígito (2 bits)"
+  },
+  "Código armazenados 3 (hex)": {
+   "bitscount": 16,
+   "byte": true,
+   "bytescount": 2,
+   "comment": "2 bytes do DTC: 0237 = P0237. 1º dígito: 0=P 4=C 8=B C=U (2 bits) + 2º dígito (2 bits)"
+  },
+  "Código pendentes 1 (hex)": {
+   "bitscount": 16,
+   "byte": true,
+   "bytescount": 2,
+   "comment": "2 bytes do DTC: 0237 = P0237. 1º dígito: 0=P 4=C 8=B C=U (2 bits) + 2º dígito (2 bits)"
+  },
+  "Código pendentes 2 (hex)": {
+   "bitscount": 16,
+   "byte": true,
+   "bytescount": 2,
+   "comment": "2 bytes do DTC: 0237 = P0237. 1º dígito: 0=P 4=C 8=B C=U (2 bits) + 2º dígito (2 bits)"
+  },
+  "Código pendentes 3 (hex)": {
+   "bitscount": 16,
+   "byte": true,
+   "bytescount": 2,
+   "comment": "2 bytes do DTC: 0237 = P0237. 1º dígito: 0=P 4=C 8=B C=U (2 bits) + 2º dígito (2 bits)"
+  }
+ },
+ "devices": []
+}

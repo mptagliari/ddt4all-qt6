@@ -281,6 +281,13 @@ class EcuFile:
                 options.elm.init_iso()
                 options.elm.set_iso8_addr(self.funcaddr, ecu_conf)
 
+        # J1850 VPW handling (Chrysler/Dodge OBD-II port): standard OBD-II services only
+        elif self.ecu_protocol.upper() == 'J1850VPW':
+            ecu_conf = {'idTx': '', 'idRx': '', 'ecuname': str(ecuname), 'protocol': 'J1850VPW'}
+            if not options.simulation_mode:
+                options.elm.init_vpw()
+                options.elm.set_vpw_addr(self.funcaddr, ecu_conf)
+
         # DOIP handling
         # //TODO: this need implementation
         # elif self.ecu_protocol.upper() == 'DOIP':

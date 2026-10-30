@@ -1803,6 +1803,57 @@ class ELM:
         # self.cmd("AT AL")  # Allow Long (>7 byte) messages
         # self.cmd("AT KW0")
 
+    def init_vpw(self):
+        """Prepare the adapter for SAE J1850 VPW (the OBD-II port of Chrysler/Dodge trucks of this era).
+
+        Only standard OBD-II services are spoken (modes 01, 03, 07, 09). The echo stays on because
+        request() discards the first response line, as it does for ISO.
+        """
+        self.currentprotocol = "vpw"
+        self.currentsubprotocol = ""
+        self.currentaddress = ""
+        self.startSession = ""
+        self.lastCMDtime = 0
+        self.lastinitrsp = ""
+
+        if self.lf != 0:
+            tmstr = datetime.now().strftime("%x %H:%M:%S.%f")[:-3]
+            self.lf.write('#' * 60 + "\n# [" + tmstr + "] Init J1850 VPW\n" + '#' * 60 + "\n")
+            self.lf.flush()
+        self.cmd("AT WS")
+        self.cmd("AT E1")
+        self.cmd("AT S1")
+        self.cmd("AT L1")
+        self.cmd("AT H0")  # headers off: the answer is "41 0C xx xx", not "48 6B 10 41 0C xx xx CRC"
+
+    def set_vpw_addr(self, addr, ecu):
+        """Select J1850 VPW and the OBD-II functional header (priority 68, target 6A, tester F1).
+
+        The ELM327 computes the CRC. addr (the ECU's physical address, 10 for the PCM) is kept for the
+        log: standard OBD-II requests are functionally addressed and every ECU that supports the
+        service answers.
+        """
+        if self.currentprotocol == "vpw" and self.currentaddress == addr and self.currentsubprotocol == ecu['protocol']:
+            return
+
+        if self.lf != 0:
+            self.lf.write(
+                '#' * 60 + "\n# Connect to: [" + clean_bytestring(ecu['ecuname']) + "] Addr: " + addr + " Protocol: " +
+                ecu['protocol'] + "\n" + '#' * 60 + "\n")
+            self.lf.flush()
+
+        self.currentprotocol = "vpw"
+        self.currentsubprotocol = ecu['protocol']
+        self.currentaddress = addr
+        self.startSession = ""
+        self.lastCMDtime = 0
+        self.lastinitrsp = ""
+
+        self.cmd("AT SP 2")  # SAE J1850 VPW
+        self.cmd("AT SH 68 6A F1")
+        self.cmd("AT AT 1")  # adaptive timing
+        self.cmd("AT ST 96")  # 0x96 * 4 ms = 600 ms; the PCM takes a while on VPW
+
     def set_iso8_addr(self, addr, ecu):
         if self.currentprotocol == "iso" and self.currentaddress == addr and self.currentsubprotocol == ecu['protocol']:
             return

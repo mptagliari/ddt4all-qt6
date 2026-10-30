@@ -1,0 +1,393 @@
+{
+ "screens": {
+  "Dados ao vivo": {
+   "width": 9600,
+   "height": 7800,
+   "color": "rgb(64,128,128)",
+   "labels": [
+    {
+     "text": "RAM 2500 5.9 CUMMINS - DADOS AO VIVO (OBD-II)",
+     "color": "rgb(0,64,128)",
+     "alignment": "0",
+     "fontcolor": "rgb(255,255,255)",
+     "bbox": {
+      "left": 200,
+      "top": 100,
+      "height": 500,
+      "width": 9000
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 16.0,
+      "bold": "1",
+      "italic": "0"
+     }
+    }
+   ],
+   "presend": [],
+   "displays": [
+    {
+     "text": "Rotação do motor",
+     "request": "PID 0C Rotação do motor",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 900,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Pressão do rail (real)",
+     "request": "PID 23 Pressão do rail (real)",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 1520,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Tensão do módulo",
+     "request": "PID 42 Tensão do módulo",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 2140,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Temperatura do líquido",
+     "request": "PID 05 Temperatura do líquido",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 2760,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Temperatura do ar de admissão",
+     "request": "PID 0F Temperatura do ar de admissão",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 3380,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Pressão do coletor (MAP)",
+     "request": "PID 0B Pressão do coletor (MAP)",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 4000,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Pressão barométrica",
+     "request": "PID 33 Pressão barométrica",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 4620,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Posição do pedal/acelerador",
+     "request": "PID 11 Posição do pedal/acelerador",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 5240,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Carga calculada do motor",
+     "request": "PID 04 Carga calculada do motor",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 5860,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Velocidade do veículo",
+     "request": "PID 0D Velocidade do veículo",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 6480,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    }
+   ],
+   "buttons": [],
+   "inputs": []
+  },
+  "Falhas e suporte": {
+   "width": 9600,
+   "height": 5940,
+   "color": "rgb(0,128,128)",
+   "labels": [
+    {
+     "text": "CÓDIGOS DE FALHA E PIDS SUPORTADOS",
+     "color": "rgb(0,64,128)",
+     "alignment": "0",
+     "fontcolor": "rgb(255,255,255)",
+     "bbox": {
+      "left": 200,
+      "top": 100,
+      "height": 500,
+      "width": 9000
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 16.0,
+      "bold": "1",
+      "italic": "0"
+     }
+    }
+   ],
+   "presend": [],
+   "displays": [
+    {
+     "text": "PIDs suportados 01-20",
+     "request": "PID 00 PIDs suportados 01-20",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 900,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "PIDs suportados 21-40",
+     "request": "PID 20 PIDs suportados 21-40",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 1520,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "PIDs suportados 41-60",
+     "request": "PID 40 PIDs suportados 41-60",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 2140,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Estado do monitor (MIL + contagem)",
+     "request": "PID 01 Estado do monitor",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 2760,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Código armazenados 1 (hex)",
+     "request": "Modo 03 Códigos armazenados (3 primeiros)",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 3380,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Código armazenados 2 (hex)",
+     "request": "Modo 03 Códigos armazenados (3 primeiros)",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 4000,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    },
+    {
+     "text": "Código armazenados 3 (hex)",
+     "request": "Modo 03 Códigos armazenados (3 primeiros)",
+     "color": "rgb(255,255,255)",
+     "width": 1800,
+     "rect": {
+      "left": 200,
+      "top": 4620,
+      "height": 480,
+      "width": 4200
+     },
+     "font": {
+      "name": "MS Sans Serif",
+      "size": 9.0,
+      "bold": "0",
+      "italic": "0"
+     },
+     "fontcolor": "rgb(0,0,0)"
+    }
+   ],
+   "buttons": [],
+   "inputs": []
+  }
+ },
+ "categories": {
+  "Dodge Ram": [
+   "Dados ao vivo",
+   "Falhas e suporte"
+  ]
+ }
+}

@@ -1,0 +1,14 @@
+[
+ {
+  "address": "VPW-10",
+  "protocol": "J1850VPW",
+  "group": "Dodge Ram (J1850 VPW)",
+  "projects": [
+   "DODGE_RAM"
+  ],
+  "diagnostic_version": "",
+  "supplier_code": "",
+  "soft_version": "",
+  "version": ""
+ }
+]
