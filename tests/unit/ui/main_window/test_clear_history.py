@@ -94,7 +94,7 @@ class TestClearHistoryWindows:
 
 
 class TestClearHistory:
-    def test_resets_windows_before_clearing_saved_history(self, mocker):
+    def test_resets_windows_before_clearing_saved_history(self, mocker, qapp):
         mocker.patch.object(main_widget, "widgets")
         window = _fake_main_window(mocker)
         calls = []
@@ -107,7 +107,7 @@ class TestClearHistory:
         # The widgets may save the history again, so it must be cleared last
         assert calls == ["windows", "config"]
 
-    def test_informs_the_user(self, mocker):
+    def test_informs_the_user(self, mocker, qapp):
         mocker.patch.object(main_widget, "widgets")
         window = _fake_main_window(mocker)
         mocker.patch.object(main_widget.options, "clear_history")
