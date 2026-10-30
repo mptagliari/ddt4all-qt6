@@ -7,6 +7,8 @@ ECU database never waits on the adapter.
 Invariant kept by this module: ``options.simulation_mode`` is False if and only
 if ``options.elm`` is a live, initialized ELM.
 """
+import threading
+
 from ddt4all.qt import core
 from ddt4all.qt import gui
 from ddt4all.qt import widgets
@@ -26,6 +28,63 @@ def _message(text):
     msgbox.setWindowTitle(version.__appname__)
     msgbox.setText(text)
     msgbox.exec()
+
+
+class ConnectWorker(core.QThread):
+    """Runs the (slow, blocking) ELM handshake off the UI thread."""
+    progress = core.Signal(str)
+
+    def __init__(self, port, speed, adapter, raise_port_speed):
+        super().__init__()
+        self.args = (port, speed, adapter, raise_port_speed)
+        self.cancel_event = threading.Event()
+        self.adapter = None
+        self.error = None
+
+    def run(self):
+        try:
+            self.adapter = elm.ELM(*self.args, cancel_event=self.cancel_event,
+                                   progress=self.progress.emit)
+        except Exception as exc:  # reported on the UI thread
+            self.error = str(exc)
+
+
+def _open_adapter(dialog):
+    """Open the adapter on a worker thread behind a Cancel button.
+
+    Returns (adapter, error, cancelled); the UI stays responsive meanwhile. The progress
+    dialog is application modal, so nothing can use the adapter before it is ready.
+    """
+    worker = ConnectWorker(options.port, dialog.selectedportspeed, dialog.adapter,
+                           dialog.raise_port_speed)
+    progress = widgets.QProgressDialog(_("Connecting to the adapter..."), _("Cancel"), 0, 0)
+    progress.setWindowTitle(version.__appname__)
+    progress.setWindowIcon(gui.QIcon(ICON_OBD))
+    progress.setWindowModality(core.Qt.ApplicationModal)
+    progress.setMinimumDuration(0)
+    progress.setAutoClose(False)
+    progress.setAutoReset(False)
+
+    loop = core.QEventLoop()
+    worker.finished.connect(loop.quit)
+    worker.progress.connect(progress.setLabelText)
+
+    def cancel():
+        # The handshake stops between baud rate attempts; wait for the worker to return
+        worker.cancel_event.set()
+        progress.setLabelText(_("Cancelling..."))
+        progress.setCancelButton(None)
+
+    progress.canceled.connect(cancel)
+    worker.start()
+    progress.show()
+    if not worker.isFinished():
+        loop.exec()
+    worker.wait()
+    progress.canceled.disconnect(cancel)
+    progress.hide()
+    progress.deleteLater()
+    return worker.adapter, worker.error, worker.cancel_event.is_set()
 
 
 def _ask_adapter(app):
@@ -65,14 +124,13 @@ def connect_adapter(app):
         # ELM() only opens the port when simulation_mode is False
         options.simulation_mode = False
         print(_("Initializing ELM with speed %i...") % dialog.selectedportspeed)
-        app.setOverrideCursor(core.Qt.WaitCursor)
-        try:
-            options.elm = elm.ELM(options.port, dialog.selectedportspeed,
-                                  dialog.adapter, dialog.raise_port_speed)
-        finally:
-            app.restoreOverrideCursor()
+        options.elm, error, cancelled = _open_adapter(dialog)
 
-        if options.elm_failed:
+        if cancelled:
+            return False
+        if error is not None:
+            options.last_error = error
+        if error is not None or options.elm is None or options.elm_failed:
             _message(_("No ELM327 or OBDLINK-SX detected on COM port ") + options.port)
             return False
         connected = True

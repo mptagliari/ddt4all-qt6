@@ -1265,6 +1265,9 @@ class MainWidget(widgets.QMainWindow):
         options.set_last_opened_ecu(ecu_name)
 
     def set_param_file(self, ecu_file, ecu_addr, ecu_name, isxml):
+        if not options.simulation_mode and options.elm is None:
+            # An adapter connection is being established; there is nothing to talk to yet
+            return
         self.current_ecu = (ecu_file, ecu_addr, ecu_name, isxml)
         self.diagaction.setEnabled(True)
         self.hexinput.setEnabled(True)

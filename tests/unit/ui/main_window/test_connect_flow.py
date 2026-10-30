@@ -79,3 +79,19 @@ def test_offline_start_without_a_remembered_ecu_opens_nothing():
     MainWidget.applyConnectionState(window)
 
     window.set_param_file.assert_not_called()
+
+
+def test_ecu_is_not_opened_while_the_adapter_is_still_connecting(monkeypatch):
+    window = make_window()
+    window.paramview = None
+    window.current_ecu = None
+    window.diagaction = window.hexinput = window.cominput = Mock()
+    monkeypatch.setattr(options, "simulation_mode", False)    # connecting...
+    monkeypatch.setattr(options, "elm", None)                 # ...but no adapter yet
+    parameters = Mock()
+    monkeypatch.setattr(main_widget, "ParamWidget", parameters)
+
+    MainWidget.set_param_file(window, *ECU)
+
+    parameters.assert_not_called()
+    assert window.current_ecu is None

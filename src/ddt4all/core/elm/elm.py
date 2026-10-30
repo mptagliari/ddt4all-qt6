@@ -418,7 +418,11 @@ class ELM:
 
     connectionStatus = False
 
-    def __init__(self, portName, rate, adapter_type, maxspeed="No"):
+    def __init__(self, portName, rate, adapter_type, maxspeed="No", cancel_event=None, progress=None):
+        """cancel_event: threading.Event checked between baud rate attempts.
+        progress: optional callable receiving a short status text.
+        Both exist so the handshake can run on a worker thread behind a Cancel button.
+        """
         self.adapter_type = adapter_type
         options.port_speed = rate
         self.stpx_enabled = False  # Initialize STPX mode flag
@@ -427,7 +431,16 @@ class ELM:
         _speed_candidates = list(dict.fromkeys([int(rate), 38400, 115200, 230400, 57600, 9600, 500000, 1000000, 2000000]))
 
         for speed in _speed_candidates:
-            print(_("Trying to open port ") + "%s @ %i" % (portName, speed))
+            if cancel_event is not None and cancel_event.is_set():
+                options.elm_failed = True
+                options.last_error = _("Connection cancelled")
+                self.connectionStatus = False
+                return
+
+            message = _("Trying to open port ") + "%s @ %i" % (portName, speed)
+            print(message)
+            if progress is not None:
+                progress(message)
 
             if not options.simulation_mode:
                 self.port = Port(portName, speed, self.adapter_type)
