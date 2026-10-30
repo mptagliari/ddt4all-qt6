@@ -240,6 +240,9 @@ class EcuList(widgets.QWidget):
 
             stored_ecus[grp].append([cs[:-8][7:], name, protocol])
 
+        # (name, address) already listed per group; keeps the duplicate check O(1)
+        seen = {grp: {(r[0], r[1]) for r in rows} for grp, rows in stored_ecus.items()}
+
         longgroupnames = {}
         for ecu in self.ecuscan.ecu_database.targets:
             if ecu.addr in self.ecuscan.ecu_database.addr_group_mapping:
@@ -260,12 +263,9 @@ class EcuList(widgets.QWidget):
             diag = ecu.diagversion
 
             row = [ecu.name, ecu.addr, ecu.protocol, supplier, diag, soft, version, projname]
-            found = False
-            for r in stored_ecus[grp]:
-                if (r[0], r[1]) == (row[0], row[1]):
-                    found = True
-                    break
-            if not found:
+            seen_in_group = seen.setdefault(grp, set())
+            if (row[0], row[1]) not in seen_in_group:
+                seen_in_group.add((row[0], row[1]))
                 stored_ecus[grp].append(row)
 
         keys = list(stored_ecus.keys())
