@@ -1,5 +1,5 @@
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 
 class HexSpinBox(widgets.QSpinBox):

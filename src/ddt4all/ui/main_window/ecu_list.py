@@ -2,11 +2,9 @@ import glob
 import json
 import locale
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
-from PyQt5.QtWidgets import QCompleter
-from PyQt5.QtCore import QSortFilterProxyModel
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.core.ecu.ecu_database as ecudb
 import ddt4all.core.elm.elm as elm
@@ -15,14 +13,7 @@ from ddt4all.ui.main_window.icons_paths import ICON_SCAN, ICON_FIND
 
 _ = options.translator('ddt4all')
 
-# Optional WebEngine import for enhanced features
-try:
-    import PyQt5.QtWebEngineWidgets as webkitwidgets
-    HAS_WEBENGINE = True
-except ImportError:
-    print(_("Warning: PyQtWebEngine not available. Some features may be limited."))
-    webkitwidgets = None
-    HAS_WEBENGINE = False
+from ddt4all.qt import HAS_WEBENGINE, webengine as webkitwidgets
 
 
 class EcuList(widgets.QWidget):
@@ -36,7 +27,7 @@ class EcuList(widgets.QWidget):
         self.vehicles = vehicles
 
         # Create a proxy model for search/filter functionality
-        self.vehicle_proxy_model = QSortFilterProxyModel(self.vehicle_combo)
+        self.vehicle_proxy_model = core.QSortFilterProxyModel(self.vehicle_combo)
         self.vehicle_proxy_model.setFilterCaseSensitivity(core.Qt.CaseInsensitive)
         self.vehicle_proxy_model.setFilterKeyColumn(0)
 
@@ -48,7 +39,7 @@ class EcuList(widgets.QWidget):
 
         # Set up completer with proxy model for proper filtering
         completer = self.vehicle_combo.completer()
-        completer.setCompletionMode(QCompleter.PopupCompletion)
+        completer.setCompletionMode(widgets.QCompleter.PopupCompletion)
         completer.setModel(self.vehicle_proxy_model)
         completer.setFilterMode(core.Qt.MatchContains)
         completer.setCaseSensitivity(core.Qt.CaseInsensitive)

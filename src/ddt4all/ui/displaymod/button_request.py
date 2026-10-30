@@ -1,9 +1,9 @@
 import os
 import zipfile
 
-import PyQt5.QtCore as core
-from PyQt5.QtGui import QIcon, QPixmap
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.utils import (
@@ -56,12 +56,12 @@ class ButtonRequest(widgets.QPushButton):
                 with open(image_data, 'rb') as gif:
                     data = gif.read()
                 if data:
-                    pixmap = QPixmap()
+                    pixmap = gui.QPixmap()
                     byte_array = core.QByteArray(data)
                     buffer = core.QBuffer(byte_array)
                     buffer.open(core.QIODevice.ReadOnly)
                     pixmap.loadFromData(buffer.readAll())
-                    self.setIcon(QIcon(pixmap))
+                    self.setIcon(gui.QIcon(pixmap))
                     self.setIconSize(self.size())
                     as_picture = True
         if not as_picture:
@@ -86,12 +86,12 @@ class ButtonRequest(widgets.QPushButton):
                 if image_data is None:
                     image_data = self.extract_image_from_zip('ecu.zip', os.path.join(options.graphics_dir, gifName + '.GIF'))
                 if image_data:
-                    pixmap = QPixmap()
+                    pixmap = gui.QPixmap()
                     byte_array = core.QByteArray(image_data)
                     buffer = core.QBuffer(byte_array)
                     buffer.open(core.QIODevice.ReadOnly)
                     pixmap.loadFromData(buffer.readAll())
-                    self.setIcon(QIcon(pixmap))
+                    self.setIcon(gui.QIcon(pixmap))
                     self.setIconSize(self.size())
                     as_picture = True
         if not as_picture:

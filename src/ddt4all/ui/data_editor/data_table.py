@@ -1,14 +1,14 @@
 
-import PyQt5.QtCore as core
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 
 _ = options.translator('ddt4all')
 
 class DataTable(widgets.QTableWidget):
-    gotoitem = core.pyqtSignal(object)
-    removeitem = core.pyqtSignal(object)
+    gotoitem = core.Signal(object)
+    removeitem = core.Signal(object)
 
     def __init__(self, parent=None):
         super(DataTable, self).__init__(parent)
@@ -40,21 +40,21 @@ class DataTable(widgets.QTableWidget):
             item_name = self.itemAt(pos).text()
             if not item_name:
                 return
-            action_goto = widgets.QAction(_("Goto data"), menu)
-            action_remove = widgets.QAction(_("Remove"), menu)
+            action_goto = gui.QAction(_("Goto data"), menu)
+            action_remove = gui.QAction(_("Remove"), menu)
 
             action_goto.triggered.connect(lambda state, it=item_name: self.goto_item(it))
             action_remove.triggered.connect(lambda state, it=item_name: self.remove_item(it))
 
             screenMenu = widgets.QMenu(_("Add to screen"))
             for sn in options.main_window.screennames:
-                sa = widgets.QAction(sn, screenMenu)
+                sa = gui.QAction(sn, screenMenu)
                 sa.triggered.connect(lambda state, name=sn, it=item_name: self.add_to_screen(name, it))
                 screenMenu.addAction(sa)
 
             menu.addActions([action_goto, action_remove])
             menu.addMenu(screenMenu)
 
-            menu.exec_(event.globalPos())
+            menu.exec(event.globalPos())
             event.accept()
 

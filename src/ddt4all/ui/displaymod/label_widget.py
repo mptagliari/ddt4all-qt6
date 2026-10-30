@@ -1,9 +1,9 @@
 import os
 import zipfile
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.utils import (

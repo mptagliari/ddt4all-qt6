@@ -2,9 +2,9 @@
 
 # (c) 2017
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as qtgui
-import PyQt5.QtWidgets as gui
+from ddt4all.qt import core
+from ddt4all.qt import gui as qtgui
+from ddt4all.qt import widgets as gui
 
 from ddt4all.core.ecu.ecu_file import EcuFile
 import ddt4all.options as options
@@ -91,4 +91,4 @@ class Virginizer(gui.QDialog):
 
 def plugin_entry():
     v = Virginizer()
-    v.exec_()
+    v.exec()

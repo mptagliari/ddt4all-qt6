@@ -1,4 +1,4 @@
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.display_data import DisplayData

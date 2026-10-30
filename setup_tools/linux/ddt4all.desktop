@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=DDT4All
+GenericName=ECU diagnostics
+Comment=Create ECU parameter screens and connect to a CAN network through OBD-II interfaces
+Exec=ddt4all
+Icon=ddt4all
+Terminal=false
+Categories=Utility;
+Keywords=ECU;OBD;ELM327;CAN;Renault;diagnostic;
+StartupWMClass=ddt4all

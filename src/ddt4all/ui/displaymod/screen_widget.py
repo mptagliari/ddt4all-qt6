@@ -1,4 +1,4 @@
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import widgets
 
 from ddt4all.ui.utils import (
     colorConvert,
