@@ -2,10 +2,10 @@
 import os
 import re
 import xml.dom.minidom
-import zipfile
 
 import json
 
+from ddt4all.core.ecu.ecu_zip import get_zip, zip_names
 from ddt4all.core.ecu.utils import (
     getChildNodesByName,
 )
@@ -65,10 +65,11 @@ class EcuFile:
             else:
                 # Zipped json here
                 if os.path.exists('ecu.zip'):
-                    zf = zipfile.ZipFile('ecu.zip', mode='r')
-                    if data in zf.namelist():
+                    zf = get_zip('ecu.zip')
+                    names = zip_names('ecu.zip')
+                    if data in names:
                         jsdata = zf.read(data)
-                    elif os.path.basename(data) in zf.namelist():
+                    elif os.path.basename(data) in names:
                         jsdata = zf.read(os.path.basename(data))
                     else:
                         print(_("Cannot find file "), data)
