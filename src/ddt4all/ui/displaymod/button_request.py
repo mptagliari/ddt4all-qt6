@@ -1,10 +1,10 @@
 import os
-import zipfile
 
 import PyQt5.QtCore as core
 from PyQt5.QtGui import QIcon, QPixmap
 import PyQt5.QtWidgets as widgets
 
+from ddt4all.core.ecu.ecu_zip import get_zip, zip_names
 import ddt4all.options as options
 from ddt4all.ui.utils import (
     jsonFont,
@@ -107,12 +107,10 @@ class ButtonRequest(widgets.QPushButton):
     @staticmethod
     def extract_image_from_zip(zip_file, image_name):
         """Extracts an image from ZIP file and returns data in memory"""
-        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-            if image_name in zip_ref.namelist():
-                # Read image in memory and return data
-                return zip_ref.read(image_name)
-            else:
-                return None
+        if image_name in zip_names(zip_file):
+            # Read image in memory and return data
+            return get_zip(zip_file).read(image_name)
+        return None
 
     def mousePressEvent(self, event):
         if options.simulation_mode and options.mode_edit:

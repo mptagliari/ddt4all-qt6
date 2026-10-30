@@ -1,10 +1,10 @@
 import os
-import zipfile
 
 import PyQt5.QtCore as core
 import PyQt5.QtGui as gui
 import PyQt5.QtWidgets as widgets
 
+from ddt4all.core.ecu.ecu_zip import get_zip, zip_names
 import ddt4all.options as options
 from ddt4all.ui.utils import (
     colorConvert,
@@ -40,12 +40,12 @@ class LabelWidget(widgets.QLabel):
 
     def get_zip_graphic(self, name):
         if os.path.exists("ecu.zip"):
-            zf = zipfile.ZipFile("ecu.zip", "r")
+            names = zip_names("ecu.zip")
             zname = "graphics/" + name + ".gif"
-            if zname not in zf.namelist():
+            if zname not in names:
                 zname = "graphics/" + name + ".GIF"
-            if zname in zf.namelist():
-                ba = core.QByteArray(zf.read(zname))
+            if zname in names:
+                ba = core.QByteArray(get_zip("ecu.zip").read(zname))
                 self.buffer = core.QBuffer()
                 self.buffer.setData(ba)
                 self.buffer.open(core.QIODevice.ReadOnly)

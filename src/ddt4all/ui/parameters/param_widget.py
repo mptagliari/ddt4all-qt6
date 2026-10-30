@@ -3,13 +3,13 @@ import json
 import os
 import time
 import xml.dom.minidom
-import zipfile
 
 import PyQt5.QtCore as core
 import PyQt5.QtGui as gui
 import PyQt5.QtWidgets as widgets
 
 from ddt4all.core.ecu.ecu_file import EcuFile
+from ddt4all.core.ecu.ecu_zip import get_zip
 from ddt4all.core.elm.elm import reconnect_elm
 from ddt4all.core.parameters.helpers import dumpXML
 import ddt4all.options as options
@@ -573,7 +573,7 @@ class ParamWidget(widgets.QWidget):
             jsondata = jsfile.read()
             jsfile.close()
         else:
-            zf = zipfile.ZipFile("ecu.zip", mode='r')
+            zf = get_zip("ecu.zip")
             layoutfile = self.ddtfile[5:] + ".layout"
             jsondata = zf.read(layoutfile)
         if os.path.exists(targetsfile):

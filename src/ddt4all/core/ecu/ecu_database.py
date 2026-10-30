@@ -1,11 +1,11 @@
 import glob
 import os
 import xml.dom.minidom
-import zipfile
 
 import json
 
 from ddt4all.core.ecu.ecu_ident import EcuIdent
+from ddt4all.core.ecu.ecu_zip import get_zip
 import ddt4all.options as options
 
 _ = options.translator('ddt4all')
@@ -82,8 +82,7 @@ class EcuDatabase:
                 self.targets.append(ecu_ident)
 
         if os.path.exists("ecu.zip") and not forceXML:
-            zf = zipfile.ZipFile("ecu.zip", mode='r')
-            jsdb = zf.read("db.json")
+            jsdb = get_zip("ecu.zip").read("db.json")
             dbdict = json.loads(jsdb)
             for href, targetv in dbdict.items():
                 self.numecu += 1
