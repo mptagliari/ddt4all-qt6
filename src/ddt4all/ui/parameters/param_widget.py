@@ -24,6 +24,9 @@ import ddt4all.version as version
 
 _ = options.translator('ddt4all')
 
+TESTER_INTERVAL_MS = 1500
+TESTER_MAX_INTERVAL_MS = 12000
+
 class ParamWidget(widgets.QWidget):
     def __init__(self, parent, ddtfile, ecu_addr, ecu_name, logview, prot_status, canline):
         super(ParamWidget, self).__init__(parent)
@@ -57,7 +60,7 @@ class ParamWidget(widgets.QWidget):
         self.timer.setSingleShot(True)
         self.tester_timer = core.QTimer()
         self.tester_timer.setSingleShot(False)
-        self.tester_timer.setInterval(1500)
+        self.tester_timer.setInterval(TESTER_INTERVAL_MS)
         self.tester_timer.timeout.connect(self.tester_send)
         self.tester_timer.start()
         self.tester_presend_command = ""
@@ -84,7 +87,16 @@ class ParamWidget(widgets.QWidget):
         if options.auto_refresh:
             return
 
-        self.sendElm(self.tester_presend_command, True)
+        response = self.sendElm(self.tester_presend_command, True)
+
+        # sendElm() blocks the UI until the ELM answers or times out. If the ECU is
+        # not answering, back off instead of freezing the UI again every 1.5 s.
+        if not response or str(response).startswith('WRONG'):
+            interval = min(self.tester_timer.interval() * 2, TESTER_MAX_INTERVAL_MS)
+        else:
+            interval = TESTER_INTERVAL_MS
+        if interval != self.tester_timer.interval():
+            self.tester_timer.setInterval(interval)
 
     def saveEcu(self, name=None):
         if not name:
