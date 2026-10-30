@@ -182,8 +182,9 @@ python -m ddt4all
 
 DDT4ALL starts **offline** (edition mode): browse vehicles and ECUs, open screens and edit
 them without touching any adapter. Click **Connect** on the toolbar to choose the adapter and
-connect; the current ECU is then re-initialised on the vehicle. Click **Disconnect** to go back
-offline and release the port. Screen editing is only available while offline.
+connect. No session is opened and nothing is sent to an ECU until you pick one in the **Ecu
+Window**; selecting it starts its session. Click **Disconnect** to go back offline and release
+the port. Screen editing is only available while offline.
 
 Use the built-in **connection test** (in the connect dialog) to let DDT4ALL auto-detect the
 adapter and the correct baud rate. On discovery, the optimal device configuration is applied.

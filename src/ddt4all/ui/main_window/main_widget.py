@@ -1015,13 +1015,33 @@ class MainWidget(widgets.QMainWindow):
             self.screenlogfile = None
 
         self.setConnected(connected)
-        # Reopen the current ECU so its init/session happens under the new mode
-        if self.current_ecu is not None:
-            self.app.setOverrideCursor(core.Qt.WaitCursor)
+        if connected:
+            # No session is started on an ECU the user has not picked: unload the one that
+            # was restored/opened offline. Selecting it in the "Ecu Window" starts its session.
+            self.closeCurrentEcu()
+            self.logview.append(_("Connected. Select an ECU in the Ecu Window to start its session."))
+        elif self.current_ecu is not None:
+            # Back offline: show the last ECU again from the database (no adapter involved)
+            self.set_param_file(*self.current_ecu)
+
+    def closeCurrentEcu(self):
+        """Unload the ECU screen (stopping its timers) without forgetting which one it was."""
+        if self.paramview:
             try:
-                self.set_param_file(*self.current_ecu)
-            finally:
-                self.app.restoreOverrideCursor()
+                self.paramview.timer.stop()
+                self.paramview.tester_timer.stop()
+            except (AttributeError, RuntimeError):
+                pass
+            self.paramview.setParent(None)
+            self.paramview.close()
+            self.paramview.destroy()
+            self.paramview = None
+        self.scrollview.setWidget(widgets.QWidget())
+        self.treeview_params.clear()
+        self.screennames = []
+        self.treeview_ecu.clearSelection()
+        for action in (self.diagaction, self.hexinput, self.cominput):
+            action.setEnabled(False)
 
     def saveEcus(self):
         filename_tuple = widgets.QFileDialog.getSaveFileName(self, _("Save vehicule (keep '.ecu' extension)"),
