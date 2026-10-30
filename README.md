@@ -180,8 +180,13 @@ ddt4all
 python -m ddt4all
 ```
 
-Use the built-in **connection test** to let DDT4ALL auto-detect the adapter and the
-correct baud rate. On discovery, the optimal device configuration is applied.
+DDT4ALL starts **offline** (edition mode): browse vehicles and ECUs, open screens and edit
+them without touching any adapter. Click **Connect** on the toolbar to choose the adapter and
+connect; the current ECU is then re-initialised on the vehicle. Click **Disconnect** to go back
+offline and release the port. Screen editing is only available while offline.
+
+Use the built-in **connection test** (in the connect dialog) to let DDT4ALL auto-detect the
+adapter and the correct baud rate. On discovery, the optimal device configuration is applied.
 
 ### Shortcut / alias (optional)
 

@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 import sys
 
-from ddt4all.qt import gui
 from ddt4all.qt import widgets
 
 from ddt4all.cli.cli_args_parser import build_parser
@@ -19,7 +18,6 @@ from ddt4all.file_manager import (
 import ddt4all.generated.resources_rc  # noqa: F401
 import ddt4all.options as options
 from ddt4all.ui.main_window.main_widget import MainWidget
-from ddt4all.ui.main_window.main_window_options import MainWindowOptions
 from ddt4all.ui.main_window.utils import (
     set_socket_timeout,
     set_theme_style
@@ -84,6 +82,7 @@ def main(argv=None) -> int:
 
     vehicles = load_this()
 
+    # Always start offline: the user connects from the toolbar once ready
     options.simulation_mode = True
     options.socket_timeout = False
 
@@ -104,52 +103,6 @@ def main(argv=None) -> int:
 
     Path(get_json_dir()).mkdir(parents=True, exist_ok=True)
     Path(get_logs_dir()).mkdir(parents=True, exist_ok=True)
-
-    pc = MainWindowOptions(app)
-    nok = True
-    while nok:
-        pcres = pc.exec()
-
-        if pc.mode == 0 or pcres == widgets.QDialog.Rejected:
-            return 0
-        # Mode 3: Language/DoIP change - reload dialog without exiting
-        if pc.mode == 3:
-            pc = MainWindowOptions(app)
-            continue
-
-        options.opt_can2 = pc.CAN2
-
-        if pc.mode == 1:
-            options.promode = False
-            options.simulation_mode = False
-        if pc.mode == 2:
-            options.promode = False
-            options.simulation_mode = True
-            break
-
-        options.port = str(pc.port)
-        port_speed = pc.selectedportspeed
-
-        if not options.port:
-            msgbox = widgets.QMessageBox()
-            msgbox.setWindowIcon(gui.QIcon(":icons/obd.png"))
-            msgbox.setWindowTitle(version.__appname__)
-            msgbox.setText(_("No COM port selected"))
-            msgbox.exec()
-
-        print(_("Initializing ELM with speed %i...") % port_speed)
-        options.elm = elm.ELM(options.port, port_speed, pc.adapter, pc.raise_port_speed)
-
-        if options.elm_failed:
-            pc.show()
-            pc.logview.append(options.get_last_error())
-            msgbox = widgets.QMessageBox()
-            msgbox.setWindowIcon(gui.QIcon(":icons/obd.png"))
-            msgbox.setWindowTitle(version.__appname__)
-            msgbox.setText(_("No ELM327 or OBDLINK-SX detected on COM port ") + options.port)
-            msgbox.exec()
-        else:
-            nok = False
 
     w = MainWidget(app, vehicles)
     options.main_window = w

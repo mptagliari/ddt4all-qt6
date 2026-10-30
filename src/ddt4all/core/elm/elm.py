@@ -675,6 +675,11 @@ class ELM:
             # Handle all possible errors during cleanup
             pass
 
+    def close(self):
+        """Reset the adapter and release its port; safe to call more than once."""
+        self.__del__()
+        self.connectionStatus = False
+
     def connectionStat(self):
         if hasattr(self, 'port') and self.port is not None and hasattr(self.port, 'connectionStatus'):
             return self.port.connectionStatus

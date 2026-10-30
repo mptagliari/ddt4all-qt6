@@ -62,7 +62,9 @@ class ParamWidget(widgets.QWidget):
         self.tester_timer.setSingleShot(False)
         self.tester_timer.setInterval(TESTER_INTERVAL_MS)
         self.tester_timer.timeout.connect(self.tester_send)
-        self.tester_timer.start()
+        # Keep-alive only makes sense with a real adapter
+        if not options.simulation_mode:
+            self.tester_timer.start()
         self.tester_presend_command = ""
         self.initXML()
         self.sliding = False

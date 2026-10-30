@@ -34,7 +34,9 @@ from ddt4all.ui.main_window.icons_paths import (
     ICON_HEX,
     ICON_COMMAND,
     ICON_FLOWCONTROL,
+    ICON_USB,
 )
+from ddt4all.ui.main_window.connection import connect_adapter, disconnect_adapter
 from ddt4all.ui.main_window.main_window_options import MainWindowOptions
 from ddt4all.ui.main_window.utils import (
     isWritable,
@@ -83,7 +85,8 @@ class MainWidget(widgets.QMainWindow):
             msgbox.exec()
 
         self.paramview = None
-        
+        self.current_ecu = None
+
         # Initialize documentation view based on WebEngine availability
         if HAS_WEBENGINE:
             self.docview = webkitwidgets.QWebEngineView()
@@ -177,15 +180,15 @@ class MainWidget(widgets.QMainWindow):
         self.tabbedview.addTab(self.scrollview, _("Screen"))
         self.tabbedview.addTab(self.snifferview, _("CAN Sniffer"))
 
-        if options.simulation_mode:
-            self.buttonEditor = ButtonEditor()
-            self.requesteditor = RequestEditor()
-            self.dataitemeditor = DataEditor()
-            self.ecuparameditor = EcuParamEditor()
-            self.tabbedview.addTab(self.requesteditor, _("Requests"))
-            self.tabbedview.addTab(self.dataitemeditor, _("Data"))
-            self.tabbedview.addTab(self.buttonEditor, _("Buttons"))
-            self.tabbedview.addTab(self.ecuparameditor, _("Ecu parameters"))
+        # Offline editors; they are disabled while connected (see applyConnectionState)
+        self.buttonEditor = ButtonEditor()
+        self.requesteditor = RequestEditor()
+        self.dataitemeditor = DataEditor()
+        self.ecuparameditor = EcuParamEditor()
+        self.tabbedview.addTab(self.requesteditor, _("Requests"))
+        self.tabbedview.addTab(self.dataitemeditor, _("Data"))
+        self.tabbedview.addTab(self.buttonEditor, _("Buttons"))
+        self.tabbedview.addTab(self.ecuparameditor, _("Ecu parameters"))
 
         screen_widget = widgets.QWidget()
         self.treedock_widget = widgets.QDockWidget(self)
@@ -227,6 +230,10 @@ class MainWidget(widgets.QMainWindow):
 
         self.toolbar = self.addToolBar(_("ToolBar"))
         self.toolbar.setContextMenuPolicy(core.Qt.PreventContextMenu)
+
+        self.connectaction = gui.QAction(gui.QIcon(ICON_USB), _("Connect"), self)
+        self.connectaction.setToolTip(_("Connect to the diagnostic adapter"))
+        self.connectaction.triggered.connect(self.toggleConnection)
 
         self.diagaction = gui.QAction(gui.QIcon(ICON_DTC), _("Read DTC"), self)
         self.diagaction.triggered.connect(self.readDtc)
@@ -280,6 +287,7 @@ class MainWidget(widgets.QMainWindow):
         self.zoominbutton.clicked.connect(self.zoomin)
         self.zoomoutbutton.clicked.connect(self.zoomout)
 
+        self.toolbar.addAction(self.connectaction)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.log)
         self.toolbar.addSeparator()
@@ -305,12 +313,11 @@ class MainWidget(widgets.QMainWindow):
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.zoomoutbutton)
 
-        if options.simulation_mode:
-            self.ui_edit_button = widgets.QPushButton(_("UI Edit"))
-            self.ui_edit_button.setCheckable(True)
-            self.toolbar.addSeparator()
-            self.toolbar.addWidget(self.ui_edit_button)
-            self.ui_edit_button.clicked.connect(self.toggle_edit)
+        self.ui_edit_button = widgets.QPushButton(_("UI Edit"))
+        self.ui_edit_button.setCheckable(True)
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(self.ui_edit_button)
+        self.ui_edit_button.clicked.connect(self.toggle_edit)
 
         if not os.path.exists(get_vehicles_dir()):
             os.mkdir(get_vehicles_dir())
@@ -466,7 +473,7 @@ class MainWidget(widgets.QMainWindow):
         about_content = help_menu.addAction(_("About"))
         about_content.triggered.connect(self.about_content_msg)
 
-        self.setConnected(True)
+        self.applyConnectionState()
         self.tabbedview.setCurrentIndex(1)
         self.showMaximized()
 
@@ -629,8 +636,11 @@ class MainWidget(widgets.QMainWindow):
         
     def show_options_dialog(self):
         """Show options dialog for device settings"""
+        # The dialog's "check adapter" flips simulation_mode; keep it consistent with options.elm
+        was_offline = options.simulation_mode
         options_dialog = MainWindowOptions(self.app)
         options_dialog.exec()
+        options.simulation_mode = was_offline
 
     def set_can_combo(self, bus):
         # Keep the user's CAN line choice when the combo is rebuilt (e.g. on every screen change);
@@ -972,6 +982,47 @@ class MainWidget(widgets.QMainWindow):
             self.connectedstatus.setStyleSheet("background-color : red; color: black")
             self.connectedstatus.setText(_("DISCONNECTED"))
 
+    def toggleConnection(self):
+        """Connect to / disconnect from the adapter. The app starts offline."""
+        if options.simulation_mode:
+            if not connect_adapter(self.app):
+                return
+        else:
+            disconnect_adapter()
+        self.applyConnectionState()
+
+    def applyConnectionState(self):
+        connected = not options.simulation_mode
+        self.connectaction.setText(_("Disconnect") if connected else _("Connect"))
+        self.connectaction.setToolTip(
+            _("Disconnect from the adapter") if connected else _("Connect to the diagnostic adapter"))
+
+        # Screen editing is an offline feature
+        options.mode_edit = False
+        self.ui_edit_button.setChecked(False)
+        self.ui_edit_button.setEnabled(not connected)
+        for editor in (self.requesteditor, self.dataitemeditor, self.buttonEditor, self.ecuparameditor):
+            self.tabbedview.setTabEnabled(self.tabbedview.indexOf(editor), not connected)
+        # Writing to the ECU is never carried over from one connection to the next
+        options.promode = False
+        self.expert.setChecked(False)
+
+        if connected and self.screenlogfile is None:
+            Path(get_logs_dir()).mkdir(parents=True, exist_ok=True)
+            self.screenlogfile = open(os.path.join(get_logs_dir() / "screens.txt"), "at", encoding="utf-8")
+        elif not connected and self.screenlogfile is not None:
+            self.screenlogfile.close()
+            self.screenlogfile = None
+
+        self.setConnected(connected)
+        # Reopen the current ECU so its init/session happens under the new mode
+        if self.current_ecu is not None:
+            self.app.setOverrideCursor(core.Qt.WaitCursor)
+            try:
+                self.set_param_file(*self.current_ecu)
+            finally:
+                self.app.restoreOverrideCursor()
+
     def saveEcus(self):
         filename_tuple = widgets.QFileDialog.getSaveFileName(self, _("Save vehicule (keep '.ecu' extension)"),
                                                              "./vehicles/mycar.ecu", "*.ecu")
@@ -1139,10 +1190,7 @@ class MainWidget(widgets.QMainWindow):
             self.paramview.tester_timer.stop()
         self.snifferview.stopthread()
         super(MainWidget, self).closeEvent(event)
-        try:
-            del options.elm
-        except AttributeError:
-            pass
+        disconnect_adapter()
     
     def resizeEvent(self, event):
         """Handle window resize to adjust screen widths while preserving vertical scrolling"""
@@ -1197,6 +1245,7 @@ class MainWidget(widgets.QMainWindow):
         options.set_last_opened_ecu(ecu_name)
 
     def set_param_file(self, ecu_file, ecu_addr, ecu_name, isxml):
+        self.current_ecu = (ecu_file, ecu_addr, ecu_name, isxml)
         self.diagaction.setEnabled(True)
         self.hexinput.setEnabled(True)
         self.cominput.setEnabled(True)
