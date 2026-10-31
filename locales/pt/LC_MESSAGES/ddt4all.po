@@ -1144,7 +1144,7 @@ msgid "Stop"
 msgstr ""
 
 msgid "Close"
-msgstr ""
+msgstr "Fechar"
 
 msgid "Log"
 msgstr ""
@@ -2525,3 +2525,77 @@ msgstr "Erro de comprimento de quadro: "
 
 msgid "Frame hex error: "
 msgstr "Erro hexadecimal de quadro: "
+
+# Added with the J1850 VPW / offline-connect work
+
+msgid "Connect"
+msgstr "Conectar"
+
+msgid "Disconnect"
+msgstr "Desconectar"
+
+msgid "Connect to the diagnostic adapter"
+msgstr "Conectar ao adaptador de diagnóstico"
+
+msgid "Disconnect from the adapter"
+msgstr "Desconectar do adaptador"
+
+msgid "Connected. Select an ECU in the Ecu Window to start its session."
+msgstr "Conectado. Selecione uma ECU na Janela Ecu para iniciar a sessão dela."
+
+msgid "Connecting to the adapter..."
+msgstr "Conectando ao adaptador..."
+
+msgid "Cancelling..."
+msgstr "Cancelando..."
+
+msgid "Connection cancelled"
+msgstr "Conexão cancelada"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Trouble codes"
+msgstr "Códigos de falha"
+
+msgid "Code"
+msgstr "Código"
+
+msgid "Kind"
+msgstr "Tipo"
+
+msgid "Manual page"
+msgstr "Página do manual"
+
+msgid "Stored"
+msgstr "Armazenado"
+
+msgid "Pending"
+msgstr "Pendente"
+
+msgid "Permanent"
+msgstr "Permanente"
+
+msgid "Connect to the vehicle to read its trouble codes"
+msgstr "Conecte ao veículo para ler os códigos de falha"
+
+msgid "Trouble code"
+msgstr "Código de falha"
+
+msgid "manual"
+msgstr "manual"
+
+msgid "MIL on"
+msgstr "MIL acesa"
+
+msgid "MIL off"
+msgstr "MIL apagada"
+
+msgid "the ECU counts %d stored codes"
+msgstr "a ECU conta %d códigos armazenados"
+
+msgid "%d read"
+msgstr "%d lidos"
+
+msgid "Some codes may be missing (frames lost on the bus): read again."
+msgstr "Podem faltar códigos (quadros perdidos no barramento): leia novamente."
