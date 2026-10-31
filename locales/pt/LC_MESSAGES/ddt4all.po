@@ -2605,3 +2605,21 @@ msgstr "Ler novamente"
 
 msgid "Press Read DTC to list the trouble codes of the selected ECU."
 msgstr "Use o botão Read DTC para listar os códigos de falha da ECU selecionada."
+
+msgid "Connection settings..."
+msgstr "Configurações de conexão..."
+
+msgid "No port chosen"
+msgstr "Nenhuma porta escolhida"
+
+msgid "Enter the Wi-Fi adapter address"
+msgstr "Informe o endereço do adaptador Wi-Fi"
+
+msgid "Choose the adapter and the port in Tools > Connection settings."
+msgstr "Escolha o adaptador e a porta em Ferramentas > Configurações de conexão."
+
+msgid "Disconnect to change the connection"
+msgstr "Desconecte para alterar a conexão"
+
+msgid "Restart DDT4ALL to apply the new language to the whole program."
+msgstr "Reinicie o DDT4ALL para aplicar o novo idioma em todo o programa."
