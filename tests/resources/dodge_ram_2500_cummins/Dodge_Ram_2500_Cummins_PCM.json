@@ -254,7 +254,8 @@
    "step": 0.1,
    "offset": 0,
    "unit": "bar",
-   "comment": "(256*A + B) * 10 kPa = *0,1 bar. Sensor de rail; o valor desejado não existe em PID padrão"
+   "comment": "(256*A + B) * 10 kPa = *0,1 bar. Sensor de rail; o valor desejado não existe em PID padrão",
+   "format": "0.0"
   },
   "Tensão do módulo": {
    "bitscount": 16,
@@ -263,7 +264,8 @@
    "step": 0.001,
    "offset": 0,
    "unit": "V",
-   "comment": "(256*A + B) / 1000"
+   "comment": "(256*A + B) / 1000",
+   "format": "0.000"
   },
   "Temperatura do líquido": {
    "bitscount": 8,
@@ -308,7 +310,8 @@
    "step": 0.39215686274509803,
    "offset": 0,
    "unit": "%",
-   "comment": "A * 100 / 255"
+   "comment": "A * 100 / 255",
+   "format": "0.0"
   },
   "Carga calculada do motor": {
    "bitscount": 8,
@@ -317,7 +320,8 @@
    "step": 0.39215686274509803,
    "offset": 0,
    "unit": "%",
-   "comment": "A * 100 / 255"
+   "comment": "A * 100 / 255",
+   "format": "0.0"
   },
   "Velocidade do veículo": {
    "bitscount": 8,

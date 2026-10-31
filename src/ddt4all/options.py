@@ -44,6 +44,10 @@ cantimeout = 0
 refreshrate = 5
 mode_edit = False
 safe_commands = ['10','12','14','17','19','1A','21','22','23','3E']
+# SAE J1979 services that only read (01 live data, 02 freeze frame, 03/07/0A codes, 06 test results,
+# 09 vehicle info). Allowed in non-expert mode for J1850 VPW ECUs, where the service id is the first byte.
+# Never add 04 (clear codes), 05 or 08 (control): they change the vehicle.
+obd2_read_services = ['01','02','03','06','07','09','0A']
 
 # TODO: Review DoIP configuration defaults and runtime flags.
 # DoIP Configuration

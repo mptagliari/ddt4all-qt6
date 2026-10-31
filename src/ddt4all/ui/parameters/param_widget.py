@@ -713,6 +713,14 @@ class ParamWidget(widgets.QWidget):
                     self.tester_presend_command = self.ecurequestsparser.requests[k].sentbytes
                     break
 
+    def isSafeCommand(self, command):
+        """True when the command may be sent without expert mode (it only reads)."""
+        service = str(command)[0:2].upper()
+        if service in options.safe_commands:
+            return True
+        # OBD-II over J1850 VPW: the read-only J1979 services (never 04/05/08)
+        return self.ecurequestsparser.ecu_protocol == "J1850VPW" and service in options.obd2_read_services
+
     def sendElm(self, command, auto=False, force=False):
         if isinstance(command, bytes):
             command = command.decode("utf-8")
@@ -740,7 +748,7 @@ class ParamWidget(widgets.QWidget):
 
             if not force and not options.promode:
                 # Allow read only modes
-                if command[0:2] in options.safe_commands:
+                if self.isSafeCommand(command):
                     elm_response = options.elm.request(command, cache=False)
                     txt = '<font color=blue>' + _('Sending ELM request :') + '</font>'
                 else:
@@ -781,7 +789,7 @@ class ParamWidget(widgets.QWidget):
 
             if not force and not options.promode:
                 # Allow read only modes
-                if command[0:2] not in options.safe_commands:
+                if not self.isSafeCommand(command):
                     elm_response = "BLOCKED"
 
         if not auto or options.log_all:
