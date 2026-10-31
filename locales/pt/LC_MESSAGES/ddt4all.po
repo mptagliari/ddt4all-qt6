@@ -2599,3 +2599,9 @@ msgstr "%d lidos"
 
 msgid "Some codes may be missing (frames lost on the bus): read again."
 msgstr "Podem faltar códigos (quadros perdidos no barramento): leia novamente."
+
+msgid "Read again"
+msgstr "Ler novamente"
+
+msgid "Press Read DTC to list the trouble codes of the selected ECU."
+msgstr "Use o botão Read DTC para listar os códigos de falha da ECU selecionada."
