@@ -8,6 +8,7 @@ from ddt4all.qt import core
 from ddt4all.qt import gui
 from ddt4all.qt import widgets
 
+from ddt4all.core.ecu import obd2_dtc
 from ddt4all.core.ecu.ecu_file import EcuFile
 from ddt4all.core.ecu.ecu_zip import get_zip
 from ddt4all.core.elm.elm import reconnect_elm
@@ -18,6 +19,7 @@ from ddt4all.ui.displaymod.display_widget import DisplayWidget
 from ddt4all.ui.displaymod.input_widget import InputWidget
 from ddt4all.ui.displaymod.label_widget import LabelWidget
 from ddt4all.ui.displaymod.screen_widget import ScreenWidget
+from ddt4all.ui.parameters.dtc_dialog import DtcDialog
 from ddt4all.ui.parameters.ecu_command import EcuCommand
 from ddt4all.ui.utils import PATH_PNG_ODB
 import ddt4all.version as version
@@ -1316,7 +1318,53 @@ class ParamWidget(widgets.QWidget):
         else:
             options.main_window.logview.append("<font color=green>" + _("Clear DTC successfully done") + "</font>")
 
+    def readDtcObd2(self):
+        """Trouble codes of an OBD-II ECU on J1850 VPW: services 03 (stored), 07 (pending), 0A (permanent)."""
+        if options.simulation_mode or options.elm is None:
+            self.logview.append(_("Connect to the vehicle to read its trouble codes"))
+            return
+
+        found = obd2_dtc.read_codes(options.elm)
+        mil, count = obd2_dtc.monitor_status(options.elm.cmd("0101"))
+        names = obd2_dtc.load_names(self.ddtfile)
+        kinds = {"stored": _("Stored"), "pending": _("Pending"), "permanent": _("Permanent")}
+
+        order, labels = [], {}
+        for kind in ("stored", "pending", "permanent"):
+            for code in found[kind]:
+                if code not in labels:
+                    order.append(code)
+                labels.setdefault(code, []).append(kinds[kind])
+
+        rows = []
+        for code in order:
+            description, page = obd2_dtc.describe(names, code)
+            rows.append((code, " + ".join(labels[code]), description or "-", page or "-"))
+            manual = " (%s %s)" % (_("manual"), page) if page else ""
+            self.logview.append("%s <b>%s</b> %s%s" % (_("Trouble code"), code, description, manual))
+
+        parts = []
+        if mil is not None:
+            parts.append(_("MIL on") if mil else _("MIL off"))
+        if count is not None:
+            parts.append(_("the ECU counts %d stored codes") % count)
+        parts.append(_("%d read") % len(found["stored"]))
+        summary = "; ".join(parts)
+        if count is not None and count > len(found["stored"]):
+            summary += ". " + _("Some codes may be missing (frames lost on the bus): read again.")
+        if not rows:
+            summary = _("No DTC") + ". " + summary
+
+        self.showDtcDialog(rows, summary)
+
+    def showDtcDialog(self, rows, summary):
+        DtcDialog(rows, summary, self).exec()
+
     def readDTC(self):
+        if self.ecurequestsparser.ecu_protocol == "J1850VPW":
+            self.readDtcObd2()
+            return
+
         if not options.simulation_mode:
             if self.ecurequestsparser.ecu_protocol == "CAN":
                 options.elm.start_session_can('10C0')
