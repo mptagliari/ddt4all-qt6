@@ -1,5 +1,7 @@
 """Connect to / disconnect from the diagnostic adapter on demand.
 
+Connecting asks one question (the risk warning) and uses the settings saved in Tools > Connection settings.
+
 The application starts offline (``options.simulation_mode`` is True and
 ``options.elm`` is None). Connecting is an explicit user action, so browsing the
 ECU database never waits on the adapter.
@@ -15,8 +17,8 @@ from ddt4all.qt import widgets
 
 import ddt4all.core.elm.elm as elm
 import ddt4all.options as options
+from ddt4all.ui.main_window import connection_settings
 from ddt4all.ui.main_window.icons_paths import ICON_OBD
-from ddt4all.ui.main_window.main_window_options import MainWindowOptions
 import ddt4all.version as version
 
 _ = options.translator('ddt4all')
@@ -49,14 +51,13 @@ class ConnectWorker(core.QThread):
             self.error = str(exc)
 
 
-def _open_adapter(dialog):
+def _open_adapter(settings):
     """Open the adapter on a worker thread behind a Cancel button.
 
     Returns (adapter, error, cancelled); the UI stays responsive meanwhile. The progress
     dialog is application modal, so nothing can use the adapter before it is ready.
     """
-    worker = ConnectWorker(options.port, dialog.selectedportspeed, dialog.adapter,
-                           dialog.raise_port_speed)
+    worker = ConnectWorker(settings.target, settings.speed, settings.adapter, settings.raise_port_speed)
     progress = widgets.QProgressDialog(_("Connecting to the adapter..."), _("Cancel"), 0, 0)
     progress.setWindowTitle(version.__appname__)
     progress.setWindowIcon(gui.QIcon(ICON_OBD))
@@ -87,44 +88,47 @@ def _open_adapter(dialog):
     return worker.adapter, worker.error, worker.cancel_event.is_set()
 
 
-def _ask_adapter(app):
-    """Show the adapter dialog; return it when the user asked to connect, else None."""
-    dialog = MainWindowOptions(app)
-    while True:
-        result = dialog.exec()
-        if dialog.mode == 0 or result == widgets.QDialog.Rejected:
-            return None
-        # Language/DoIP change: rebuild the dialog and ask again
-        if dialog.mode == 3:
-            dialog = MainWindowOptions(app)
-            continue
-        # Mode 2 is the old "demo" button: the app is already offline
-        return dialog if dialog.mode == 1 else None
+def confirm_risk():
+    """The warning shown before every connection. OK goes on; Cancel (or closing the box) does not."""
+    box = widgets.QMessageBox()
+    box.setIcon(widgets.QMessageBox.Warning)
+    box.setWindowIcon(gui.QIcon(ICON_OBD))
+    box.setWindowTitle(version.__appname__)
+    box.setText(_("I'm aware that I can harm my car if badly used"))
+    box.setStandardButtons(widgets.QMessageBox.Ok | widgets.QMessageBox.Cancel)
+    box.setDefaultButton(widgets.QMessageBox.Ok)
+    return box.exec() == widgets.QMessageBox.Ok
 
 
-def connect_adapter(app):
-    """Let the user pick an adapter and connect. Returns True when connected.
+def connect_adapter(app, open_settings=None):
+    """Confirm the warning and connect with the saved settings. Returns True when connected.
 
-    On any failure the application stays offline (simulation_mode True, elm None).
+    open_settings is called when the settings are not complete yet (no port chosen), so the user lands
+    where it is fixed. On any failure the application stays offline (simulation_mode True, elm None).
     """
     was_offline = options.simulation_mode
     connected = False
     try:
-        dialog = _ask_adapter(app)
-        if dialog is None:
+        if not confirm_risk():
             return False
 
-        options.opt_can2 = dialog.CAN2
-        options.promode = False
-        options.port = str(dialog.port)
-        if not dialog.port:
-            _message(_("No COM port selected"))
+        settings = connection_settings.load()
+        problem = settings.problem()
+        if problem:
+            _message(problem + ". " + _("Choose the adapter and the port in Tools > Connection settings."))
+            if open_settings is not None:
+                open_settings()
             return False
+
+        options.opt_can2 = settings.can2
+        options.promode = False
+        options.port = settings.target
+        options.port_name = settings.port_name
 
         # ELM() only opens the port when simulation_mode is False
         options.simulation_mode = False
-        print(_("Initializing ELM with speed %i...") % dialog.selectedportspeed)
-        options.elm, error, cancelled = _open_adapter(dialog)
+        print(_("Initializing ELM with speed %i...") % settings.speed)
+        options.elm, error, cancelled = _open_adapter(settings)
 
         if cancelled:
             return False

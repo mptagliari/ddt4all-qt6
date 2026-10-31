@@ -9,6 +9,7 @@ from ddt4all.qt import widgets
 
 import ddt4all.core.elm.elm as elm
 import ddt4all.options as options
+from ddt4all.ui.main_window import connection_settings
 from ddt4all.ui.main_window.donation_widget import DonationWidget
 from ddt4all.ui.main_window.icons_paths import (
     ICON_BT,
@@ -42,16 +43,20 @@ class PortScanWorker(core.QThread):
 
 
 class MainWindowOptions(widgets.QDialog):
-    def __init__(self, app):
+    # adapter id -> the handler that selects it (each one also sets that adapter's usual speeds)
+    ADAPTER_HANDLERS = {"STD_USB": "usb", "STD_WIFI": "wifi", "STD_BT": "bt", "OBDLINK": "obdlink", "ELS27": "els",
+                        "VLINKER": "vlinker", "DERLEK": "derelek", "VGATE": "vgate", "DOIP": "doip"}
+
+    def __init__(self, app, connected=False):
         portSpeeds = [38400, 57600, 115200, 230400, 500000, 1000000]
         self.port = None
         self.ports = {}
         self.mode = 0
-        self.securitycheck = False
-        self.CAN2 = False
-        self.selectedportspeed = 38400
         self.adapter = "STD"
-        self.raise_port_speed = _("No")
+        self.connected = connected     # the port is in use: connection settings are shown but locked
+        self._restoring = True          # no saving while the saved values are put back
+        self._rebuilding = False        # no saving while the port list is rebuilt
+        self._persist_pending = False
         self.app = app  # Store app reference for reload
         super(MainWindowOptions, self).__init__(None)
         # Set window icon and title
@@ -200,9 +205,8 @@ class MainWindowOptions(widgets.QDialog):
         layout.addLayout(speedlayout)
 
         button_layout = widgets.QHBoxLayout()
-        button_con = widgets.QPushButton(_("Connected mode"))
-        button_dmo = widgets.QPushButton(_("Edition mode"))
         button_elm_chk = widgets.QPushButton(_("ELM benchmark"))
+        button_close = widgets.QPushButton(_("Close"))
 
         self.elmchk = button_elm_chk
 
@@ -213,15 +217,6 @@ class MainWindowOptions(widgets.QDialog):
         wifilayout.addWidget(wifilabel)
         wifilayout.addWidget(self.wifiinput)
         layout.addLayout(wifilayout)
-
-        safetychecklayout = widgets.QHBoxLayout()
-        self.safetycheck = widgets.QCheckBox()
-        self.safetycheck.setChecked(False)
-        safetylabel = widgets.QLabel(_("I'm aware that I can harm my car if badly used"))
-        safetychecklayout.addWidget(self.safetycheck)
-        safetychecklayout.addWidget(safetylabel)
-        safetychecklayout.addStretch()
-        layout.addLayout(safetychecklayout)
 
         can2checklayout = widgets.QHBoxLayout()
         self.safetyCAN2check = widgets.QCheckBox()
@@ -360,35 +355,35 @@ class MainWindowOptions(widgets.QDialog):
 
         layout.addWidget(donationwidget)
 
-        button_layout.addWidget(button_con)
-        button_layout.addWidget(button_dmo)
         button_layout.addWidget(button_elm_chk)
+        button_layout.addWidget(button_close)
         layout.addLayout(button_layout)
 
         self.logview = widgets.QTextEdit()
         layout.addWidget(self.logview)
         self.logview.hide()
 
-        button_con.clicked.connect(self.connectedMode)
-        button_dmo.clicked.connect(self.demoMode)
         button_elm_chk.clicked.connect(self.check_elm)
+        button_close.clicked.connect(self.accept)
 
         self._scan_worker = None
         self.timer = core.QTimer()
         self.timer.timeout.connect(self.rescan_ports)
-        self.timer.start(2000)
         self.portcount = -1
         self.usb()
-        elm.detect_usb_device()  # must run on main thread before any PortScanWorker starts
-        self.rescan_ports()
+        self._style_adapter_buttons()
+        self._wire_persistence()
+        self._restore_saved()
+        if self.connected:
+            # The adapter is open: probing the ports now could disturb it, and changing them would do nothing
+            self._lock_connection_settings()
+        else:
+            self.timer.start(2000)
+            elm.detect_usb_device()  # must run on main thread before any PortScanWorker starts
+            self.rescan_ports()
         self.setWindowTitle(version.__appname__ + " - Version: " + version.__version__ + " - Build status: " + version.__codename__)
 
-    def save_config(self):
-        # Save configuration (language is already saved by real-time switching)
-        options.configuration["dark"] = options.dark_mode
-        options.configuration["socket_timeout"] = options.socket_timeout
-
-        # Save DoIP configuration
+    def _store_doip(self):
         options.configuration["doip_target_ip"] = self.doip_ipinput.text()
         options.configuration["doip_target_port"] = self.doip_portinput.value()
         options.configuration["doip_timeout"] = self.doip_timeoutinput.value()
@@ -397,8 +392,98 @@ class MainWindowOptions(widgets.QDialog):
         options.configuration["doip_preset"] = self.doip_presetcombo.currentText()
         options.configuration["doip_scan"] = self.doip_scancheck.isChecked()
 
+    def save_config(self):
+        # Save configuration (language is already saved by real-time switching)
+        options.configuration["dark"] = options.dark_mode
+        options.configuration["socket_timeout"] = options.socket_timeout
+        self._store_doip()
         options.save_config()
         self.close()  # Just close dialog, don't exit app
+
+    def _persist_doip(self, *_args):
+        if not self._restoring:
+            self._store_doip()
+            options.save_config()
+
+    # --- connection settings: saved as soon as they change -------------------------------------------------
+
+    def current_settings(self):
+        saved = connection_settings.load()
+        item = self.listview.currentItem()
+        port, port_name = saved.port, saved.port_name       # no selection (list empty): keep what was saved
+        if item is not None and item.text() in self.ports:
+            port, port_name = self.ports[item.text()][0], self.ports[item.text()][1]
+        try:
+            speed = int(self.speedcombo.currentText())
+        except ValueError:
+            speed = saved.speed
+        uart = self.obdlinkspeedcombo.currentText()
+        return connection_settings.ConnectionSettings(
+            adapter=self.adapter if self.adapter in connection_settings.ADAPTERS else saved.adapter,
+            port=port, port_name=port_name, speed=speed, wifi=self.wifiinput.text(),
+            can2=self.safetyCAN2check.isChecked(), uart_speed=uart if uart.isdigit() else "")
+
+    def _persist(self, *_args):
+        """Save the connection settings once the current change has finished (a handler changes several widgets)."""
+        if self._restoring or self._rebuilding or self.connected or self._persist_pending:
+            return
+        self._persist_pending = True
+        core.QTimer.singleShot(0, self._persist_now)
+
+    def _persist_now(self):
+        self._persist_pending = False
+        connection_settings.save(self.current_settings())
+
+    ADAPTER_BUTTON_STYLE = ("QPushButton:checked { border: 2px solid palette(highlight); border-radius: 5px; "
+                            "background: palette(midlight); }")
+
+    def _style_adapter_buttons(self):
+        """The chosen adapter is the one that is restored, so it has to be easy to see."""
+        for button in (self.usbbutton, self.wifibutton, self.btbutton, self.obdlinkbutton, self.elsbutton,
+                       self.vlinkerbutton, self.derelekbutton, self.vgatebutton, self.doipbutton):
+            button.setAutoDefault(False)        # the dialog would outline the first one as its default button
+            button.setStyleSheet(self.ADAPTER_BUTTON_STYLE)
+
+    def _wire_persistence(self):
+        for button in (self.usbbutton, self.wifibutton, self.btbutton, self.obdlinkbutton, self.elsbutton,
+                       self.vlinkerbutton, self.derelekbutton, self.vgatebutton, self.doipbutton):
+            button.toggled.connect(self._persist)
+        self.listview.currentItemChanged.connect(self._persist)
+        self.speedcombo.currentIndexChanged.connect(self._persist)
+        self.wifiinput.editingFinished.connect(self._persist)
+        self.safetyCAN2check.stateChanged.connect(self._persist)
+        self.obdlinkspeedcombo.currentIndexChanged.connect(self._persist)
+        self.doip_ipinput.editingFinished.connect(self._persist_doip)
+        self.doip_portinput.valueChanged.connect(self._persist_doip)
+        self.doip_timeoutinput.valueChanged.connect(self._persist_doip)
+        self.doip_announcecheck.stateChanged.connect(self._persist_doip)
+        self.doip_reconnectcheck.stateChanged.connect(self._persist_doip)
+
+    def _restore_saved(self):
+        """Put the saved settings back. The adapter handler goes first: it resets speeds to its defaults."""
+        saved = connection_settings.load()
+        self._restoring = True
+        try:
+            getattr(self, self.ADAPTER_HANDLERS[saved.adapter])()
+            index = self.speedcombo.findText(str(saved.speed))
+            if index >= 0:
+                self.speedcombo.setCurrentIndex(index)
+            self.wifiinput.setText(saved.wifi)
+            self.safetyCAN2check.setChecked(saved.can2)
+            if saved.uart_speed:
+                index = self.obdlinkspeedcombo.findText(saved.uart_speed)
+                if index >= 0:
+                    self.obdlinkspeedcombo.setCurrentIndex(index)
+        finally:
+            self._restoring = False
+
+    def _lock_connection_settings(self):
+        """While connected only the settings unrelated to the open port stay editable."""
+        for widget in (self.listview, self.usbbutton, self.wifibutton, self.btbutton, self.obdlinkbutton,
+                       self.elsbutton, self.vlinkerbutton, self.derelekbutton, self.vgatebutton, self.doipbutton,
+                       self.speedcombo, self.wifiinput, self.safetyCAN2check, self.obdlinkspeedcombo, self.elmchk):
+            widget.setEnabled(False)
+        self.setWindowTitle(self.windowTitle() + " - " + _("Disconnect to change the connection"))
 
     def change_language_realtime(self, language_name):
         """Handle real-time language change from combo box"""
@@ -583,6 +668,7 @@ class MainWindowOptions(widgets.QDialog):
             if len(ports) == self.portcount:
                 return
 
+            self._rebuilding = True
             self.listview.clear()
             self.ports = {}
             self.portcount = len(ports)
@@ -629,6 +715,14 @@ class MainWindowOptions(widgets.QDialog):
                 else:
                     item.setBackground(gui.QColor(192, 192, 192))  # Silver
 
+            # The port saved in the settings, when it is still there
+            saved_port = connection_settings.load().port
+            for i in range(self.listview.count()):
+                item = self.listview.item(i)
+                if saved_port and self.ports[item.text()][0] == saved_port:
+                    self.listview.setCurrentItem(item)
+                    break
+
             # Auto-select first OBD device if available
             if self.listview.count() > 0 and not self.listview.currentItem():
                 # Prioritize known OBD devices
@@ -643,6 +737,8 @@ class MainWindowOptions(widgets.QDialog):
 
         except Exception as e:
             print(_("Error updating port list: %s") % e)
+        finally:
+            self._rebuilding = False
 
     def bt(self):
         self.adapter = "STD_BT"
@@ -1163,55 +1259,3 @@ class MainWindowOptions(widgets.QDialog):
         self.derelekbutton.blockSignals(False)
         self.vgatebutton.blockSignals(False)
         # self.elmchk.setEnabled(False)
-
-    def connectedMode(self):
-        self.timer.stop()
-        if self._scan_worker is not None and self._scan_worker.isRunning():
-            self._scan_worker.wait()
-        self.securitycheck = self.safetycheck.isChecked()
-        self.CAN2 = self.safetyCAN2check.isChecked()
-        self.selectedportspeed = int(self.speedcombo.currentText())
-        if not self.securitycheck:
-            msgbox = widgets.QMessageBox()
-            appIcon = gui.QIcon(ICON_OBD)
-            msgbox.setWindowIcon(appIcon)
-            msgbox.setWindowTitle(version.__appname__)
-            msgbox.setText(_("You must check the recommandations"))
-            msgbox.exec()
-            return
-
-        options.simulation_mode = False
-
-        if self.wifibutton.isChecked():
-            self.port = str(self.wifiinput.text())
-            self.mode = 1
-            self.done(True)
-        else:
-            currentitem = self.listview.currentItem()
-            if currentitem:
-                portinfo = currentitem.text()
-                port_data = self.ports[portinfo]
-                self.port = port_data[0]
-                options.port_name = port_data[1]
-                self.mode = 1
-                self.raise_port_speed = self.obdlinkspeedcombo.currentText()
-                self.done(True)
-            else:
-                msgbox = widgets.QMessageBox()
-                appIcon = gui.QIcon(ICON_OBD)
-                msgbox.setWindowIcon(appIcon)
-                msgbox.setWindowTitle(version.__appname__)
-                msgbox.setText(_("Please select a communication port"))
-                msgbox.exec()
-
-    def demoMode(self):
-        self.timer.stop()
-        if self._scan_worker is not None and self._scan_worker.isRunning():
-            self._scan_worker.wait()
-        self.securitycheck = self.safetycheck.isChecked()
-        self.CAN2 = self.safetyCAN2check.isChecked()
-        self.port = 'DUMMY'
-        self.mode = 2
-        options.report_data = False
-        options.simulation_mode = True
-        self.done(True)

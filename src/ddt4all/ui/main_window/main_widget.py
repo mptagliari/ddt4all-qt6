@@ -34,9 +34,9 @@ from ddt4all.ui.main_window.icons_paths import (
     ICON_HEX,
     ICON_COMMAND,
     ICON_FLOWCONTROL,
-    ICON_USB,
 )
 from ddt4all.ui.main_window.connection import connect_adapter, disconnect_adapter
+from ddt4all.ui.main_window.icons import bolt_icon
 from ddt4all.ui.main_window.main_window_options import MainWindowOptions
 from ddt4all.ui.main_window.utils import (
     isWritable,
@@ -234,7 +234,7 @@ class MainWidget(widgets.QMainWindow):
         self.toolbar = self.addToolBar(_("ToolBar"))
         self.toolbar.setContextMenuPolicy(core.Qt.PreventContextMenu)
 
-        self.connectaction = gui.QAction(gui.QIcon(ICON_USB), _("Connect"), self)
+        self.connectaction = gui.QAction(bolt_icon(), _("Connect"), self)
         self.connectaction.setToolTip(_("Connect to the diagnostic adapter"))
         self.connectaction.triggered.connect(self.toggleConnection)
 
@@ -353,6 +353,9 @@ class MainWidget(widgets.QMainWindow):
 
         # Tools menu
         tools_menu = menu.addMenu(_("Tools"))
+        connectionaction = tools_menu.addAction(_("Connection settings..."))
+        connectionaction.triggered.connect(self.showConnectionSettings)
+        tools_menu.addSeparator()
         identecu = tools_menu.addAction(_("Identify ECU"))
         identecu.triggered.connect(self.identEcu)
         newecuction = tools_menu.addAction(_("Create New ECU"))
@@ -637,13 +640,26 @@ class MainWidget(widgets.QMainWindow):
         new_theme = not options.dark_mode
         set_theme_style(2 if new_theme else 0)
         
-    def show_options_dialog(self):
-        """Show options dialog for device settings"""
-        # The dialog's "check adapter" flips simulation_mode; keep it consistent with options.elm
-        was_offline = options.simulation_mode
-        options_dialog = MainWindowOptions(self.app)
-        options_dialog.exec()
+    def showConnectionSettings(self):
+        """Tools > Connection settings: adapter, port, speeds and the other options. Saved as they change."""
+        was_offline = options.simulation_mode            # the dialog's ELM benchmark flips it
+        connected = not options.simulation_mode
+        language = options.configuration.get("lang")
+        dialog = MainWindowOptions(self.app, connected=connected)
+        while True:
+            dialog.exec()
+            if dialog.mode != 3:
+                break
+            # The language or the DoIP scan changed: rebuild the dialog so it shows the new state
+            dialog = MainWindowOptions(self.app, connected=connected)
         options.simulation_mode = was_offline
+
+        if options.configuration.get("lang") != language:
+            box = widgets.QMessageBox(self)
+            box.setIcon(widgets.QMessageBox.Information)
+            box.setWindowTitle(version.__appname__)
+            box.setText(_("Restart DDT4ALL to apply the new language to the whole program."))
+            box.exec()
 
     def set_can_combo(self, bus):
         # Keep the user's CAN line choice when the combo is rebuilt (e.g. on every screen change);
@@ -988,7 +1004,7 @@ class MainWidget(widgets.QMainWindow):
     def toggleConnection(self):
         """Connect to / disconnect from the adapter. The app starts offline."""
         if options.simulation_mode:
-            if not connect_adapter(self.app):
+            if not connect_adapter(self.app, self.showConnectionSettings):
                 return
         else:
             disconnect_adapter()
@@ -997,6 +1013,7 @@ class MainWidget(widgets.QMainWindow):
     def applyConnectionState(self):
         connected = not options.simulation_mode
         self.connectaction.setText(_("Disconnect") if connected else _("Connect"))
+        self.connectaction.setIcon(bolt_icon(connected))
         self.connectaction.setToolTip(
             _("Disconnect from the adapter") if connected else _("Connect to the diagnostic adapter"))
 
