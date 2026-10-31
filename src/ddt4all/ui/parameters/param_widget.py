@@ -19,7 +19,6 @@ from ddt4all.ui.displaymod.display_widget import DisplayWidget
 from ddt4all.ui.displaymod.input_widget import InputWidget
 from ddt4all.ui.displaymod.label_widget import LabelWidget
 from ddt4all.ui.displaymod.screen_widget import ScreenWidget
-from ddt4all.ui.parameters.dtc_dialog import DtcDialog
 from ddt4all.ui.parameters.ecu_command import EcuCommand
 from ddt4all.ui.utils import PATH_PNG_ODB
 import ddt4all.version as version
@@ -1355,10 +1354,12 @@ class ParamWidget(widgets.QWidget):
         if not rows:
             summary = _("No DTC") + ". " + summary
 
-        self.showDtcDialog(rows, summary)
+        self.showDtc(rows, summary)
 
-    def showDtcDialog(self, rows, summary):
-        DtcDialog(rows, summary, self).exec()
+    def showDtc(self, rows, summary):
+        """Show the codes in the main window's "Trouble codes" tab."""
+        if options.main_window is not None:
+            options.main_window.showDtcCodes(rows, summary)
 
     def readDTC(self):
         if self.ecurequestsparser.ecu_protocol == "J1850VPW":

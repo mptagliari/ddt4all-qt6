@@ -18,7 +18,7 @@ def make_window(current_ecu=ECU):
         connectaction=Mock(), ui_edit_button=Mock(), expert=Mock(), tabbedview=Mock(),
         requesteditor=Mock(), dataitemeditor=Mock(), buttonEditor=Mock(), ecuparameditor=Mock(),
         screenlogfile=None, logview=Mock(), setConnected=Mock(), set_param_file=Mock(),
-        current_ecu=current_ecu,
+        current_ecu=current_ecu, dtcview=Mock(),
     )
     window.paramview_before = window.paramview
     window.closeCurrentEcu = lambda: MainWidget.closeCurrentEcu(window)
@@ -46,6 +46,7 @@ def test_close_current_ecu_stops_timers_and_disables_ecu_actions():
     assert window.screennames == []
     for action in (window.diagaction, window.hexinput, window.cominput):
         action.setEnabled.assert_called_once_with(False)
+    window.dtcview.clear.assert_called_once()    # the tab does not keep the codes of the unloaded ECU
     assert window.current_ecu == ECU          # remembered for going back offline
 
 

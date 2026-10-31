@@ -42,6 +42,7 @@ from ddt4all.ui.main_window.utils import (
     isWritable,
     set_theme_style
 )
+from ddt4all.ui.parameters.dtc_view import DtcView
 from ddt4all.ui.parameters.param_widget import ParamWidget
 from ddt4all.ui.sniffer.sniffer import Sniffer
 import ddt4all.version as version
@@ -179,6 +180,8 @@ class MainWidget(widgets.QMainWindow):
         self.tabbedview.addTab(self.docview, _("Documentation"))
         self.tabbedview.addTab(self.scrollview, _("Screen"))
         self.tabbedview.addTab(self.snifferview, _("CAN Sniffer"))
+        self.dtcview = DtcView(self.readDtc)
+        self.tabbedview.addTab(self.dtcview, _("Trouble codes"))
 
         # Offline editors; they are disabled while connected (see applyConnectionState)
         self.buttonEditor = ButtonEditor()
@@ -819,7 +822,7 @@ class MainWidget(widgets.QMainWindow):
             self.screennames.append(newscreenname)
 
     def showDataTab(self, name):
-        self.tabbedview.setCurrentIndex(4)
+        self.tabbedview.setCurrentWidget(self.dataitemeditor)
         self.dataitemeditor.edititem(name)
 
     def hexeditor(self):
@@ -1039,6 +1042,7 @@ class MainWidget(widgets.QMainWindow):
         self.scrollview.setWidget(widgets.QWidget())
         self.treeview_params.clear()
         self.screennames = []
+        self.dtcview.clear()
         self.treeview_ecu.clearSelection()
         for action in (self.diagaction, self.hexinput, self.cominput):
             action.setEnabled(False)
@@ -1145,6 +1149,10 @@ class MainWidget(widgets.QMainWindow):
     def readDtc(self):
         if self.paramview:
             self.paramview.readDTC()
+
+    def showDtcCodes(self, rows, summary):
+        self.dtcview.set_rows(rows, summary)
+        self.tabbedview.setCurrentWidget(self.dtcview)
 
     def changeAutorefresh(self):
         options.auto_refresh = self.autorefresh.isChecked()
