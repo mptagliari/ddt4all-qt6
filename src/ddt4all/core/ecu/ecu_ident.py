@@ -26,6 +26,8 @@ class EcuIdent:
             self.protocol = 'ISO8'
         elif "DOIP" in protocol.upper():
             self.protocol = 'DOIP'
+        elif "J1850" in protocol.upper():
+            self.protocol = 'J1850VPW'
         else:
             self.protocol = 'UNKNOWN'
         self.hash = diagversion + supplier + soft + version
