@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 import sys
 
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import widgets
 
 from ddt4all.cli.cli_args_parser import build_parser
 import ddt4all.core.ecu.ecu_database as ecu_db
@@ -19,7 +18,6 @@ from ddt4all.file_manager import (
 import ddt4all.generated.resources_rc  # noqa: F401
 import ddt4all.options as options
 from ddt4all.ui.main_window.main_widget import MainWidget
-from ddt4all.ui.main_window.main_window_options import MainWindowOptions
 from ddt4all.ui.main_window.utils import (
     set_socket_timeout,
     set_theme_style
@@ -28,21 +26,10 @@ import ddt4all.version as version
 
 _ = options.translator('ddt4all')
 
-# Optional WebEngine import for enhanced features
-try:
-    import PyQt5.QtWebEngineWidgets as webkitwidgets
-    HAS_WEBENGINE = True
-except ImportError:
-    print(_("Warning: PyQtWebEngine not available. Some features may be limited."))
-    webkitwidgets = None
-    HAS_WEBENGINE = False
+from ddt4all.qt import HAS_WEBENGINE, webengine as webkitwidgets
 
 BASE_DIR = Path(__file__).resolve().parent
 icons_base_dir = BASE_DIR / "resources" / "icons"
-
-# remove Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway 
-if sys.platform[:3] == "lin":
-    os.environ["XDG_SESSION_TYPE"] = "xcb"
 
 
 def load_this():
@@ -95,10 +82,13 @@ def main(argv=None) -> int:
 
     vehicles = load_this()
 
+    # Always start offline: the user connects from the toolbar once ready
     options.simulation_mode = True
     options.socket_timeout = False
 
     app = widgets.QApplication(sys.argv)
+    # Lets the desktop match the window to its ddt4all.desktop launcher/icon
+    app.setDesktopFileName("ddt4all")
 
     try:
         with open(get_config_dir() / "config.json", "r", encoding="UTF-8") as f:
@@ -108,64 +98,16 @@ def main(argv=None) -> int:
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
         set_theme_style(app, 0)
 
-    app.setStyle("plastic")
-
     if os.path.exists(options.ecus_dir + '/eculist.xml'):
         print(_("Using custom DDT database"))
 
     Path(get_json_dir()).mkdir(parents=True, exist_ok=True)
     Path(get_logs_dir()).mkdir(parents=True, exist_ok=True)
 
-    pc = MainWindowOptions(app)
-    nok = True
-    while nok:
-        pcres = pc.exec_()
-
-        if pc.mode == 0 or pcres == widgets.QDialog.Rejected:
-            return 0
-        # Mode 3: Language/DoIP change - reload dialog without exiting
-        if pc.mode == 3:
-            pc = MainWindowOptions(app)
-            continue
-
-        options.opt_can2 = pc.CAN2
-
-        if pc.mode == 1:
-            options.promode = False
-            options.simulation_mode = False
-        if pc.mode == 2:
-            options.promode = False
-            options.simulation_mode = True
-            break
-
-        options.port = str(pc.port)
-        port_speed = pc.selectedportspeed
-
-        if not options.port:
-            msgbox = widgets.QMessageBox()
-            msgbox.setWindowIcon(gui.QIcon(":icons/obd.png"))
-            msgbox.setWindowTitle(version.__appname__)
-            msgbox.setText(_("No COM port selected"))
-            msgbox.exec_()
-
-        print(_("Initializing ELM with speed %i...") % port_speed)
-        options.elm = elm.ELM(options.port, port_speed, pc.adapter, pc.raise_port_speed)
-
-        if options.elm_failed:
-            pc.show()
-            pc.logview.append(options.get_last_error())
-            msgbox = widgets.QMessageBox()
-            msgbox.setWindowIcon(gui.QIcon(":icons/obd.png"))
-            msgbox.setWindowTitle(version.__appname__)
-            msgbox.setText(_("No ELM327 or OBDLINK-SX detected on COM port ") + options.port)
-            msgbox.exec_()
-        else:
-            nok = False
-
     w = MainWidget(app, vehicles)
     options.main_window = w
     w.show()
-    app.exec_()
+    app.exec()
     return 0
 
 

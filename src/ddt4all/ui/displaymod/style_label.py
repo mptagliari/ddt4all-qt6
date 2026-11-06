@@ -1,4 +1,4 @@
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import widgets
 
 class StyleLabel(widgets.QLabel):
     def __init__(self, parent):

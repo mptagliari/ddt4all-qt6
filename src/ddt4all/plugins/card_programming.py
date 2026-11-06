@@ -4,9 +4,9 @@
 # (c) 2017
 # This is an example plugin
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as qtgui
-import PyQt5.QtWidgets as gui
+from ddt4all.qt import core
+from ddt4all.qt import gui as qtgui
+from ddt4all.qt import widgets as gui
 
 from ddt4all.core.ecu.ecu_file import EcuFile
 import ddt4all.options as options
@@ -297,4 +297,4 @@ class CardProg(gui.QDialog):
 
 def plugin_entry():
     cp = CardProg()
-    cp.exec_()
+    cp.exec()

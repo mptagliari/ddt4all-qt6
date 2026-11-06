@@ -3,9 +3,9 @@ import os
 import re
 import time
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.core.elm.elm as elm
 import ddt4all.options as options
@@ -30,18 +30,11 @@ import ddt4all.version as version
 
 _ = options.translator('ddt4all')
 
-# Optional WebEngine import for enhanced features
-try:
-    import PyQt5.QtWebEngineWidgets as webkitwidgets
-    HAS_WEBENGINE = True
-except ImportError:
-    print(_("Warning: PyQtWebEngine not available. Some features may be limited."))
-    webkitwidgets = None
-    HAS_WEBENGINE = False
+from ddt4all.qt import HAS_WEBENGINE, webengine as webkitwidgets
 
 
 class PortScanWorker(core.QThread):
-    portsFound = core.pyqtSignal(list)
+    portsFound = core.Signal(list)
 
     def run(self):
         ports = elm.get_available_ports()
@@ -1184,7 +1177,7 @@ class MainWindowOptions(widgets.QDialog):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("You must check the recommandations"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         options.simulation_mode = False
@@ -1209,7 +1202,7 @@ class MainWindowOptions(widgets.QDialog):
                 msgbox.setWindowIcon(appIcon)
                 msgbox.setWindowTitle(version.__appname__)
                 msgbox.setText(_("Please select a communication port"))
-                msgbox.exec_()
+                msgbox.exec()
 
     def demoMode(self):
         self.timer.stop()

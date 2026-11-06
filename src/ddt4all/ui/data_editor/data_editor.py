@@ -1,8 +1,8 @@
 import copy
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 from ddt4all.core.ecu.ecu_data import EcuData
 import ddt4all.options as options
@@ -107,7 +107,7 @@ class DataEditor(widgets.QWidget):
                     msgbox.setWindowIcon(appIcon)
                     msgbox.setWindowTitle(version.__appname__)
                     msgbox.setText(_("Data is used by request %s") % reqname)
-                    msgbox.exec_()
+                    msgbox.exec()
                     return
             for sndname, snddi in request.sendbyte_dataitems.items():
                 if sndname == dataname:
@@ -116,7 +116,7 @@ class DataEditor(widgets.QWidget):
                     msgbox.setWindowIcon(appIcon)
                     msgbox.setWindowTitle(version.__appname__)
                     msgbox.setText(_("Data is used by request %s") % reqname)
-                    msgbox.exec_()
+                    msgbox.exec()
                     return
 
         self.ecurequestsparser.data.pop(dataname)

@@ -1,6 +1,6 @@
 import time
 
-import PyQt5.QtCore as core
+from ddt4all.qt import core
 
 import ddt4all.options as options
 
@@ -8,10 +8,10 @@ class SnifferThread(core.QThread):
     # Use a thread to avoid ELM buffer flooding
     try:
         # TODO:// basestring not defined use bytes.
-        # dataready = core.pyqtSignal(basestring)
-        dataready = core.pyqtSignal(bytes)
+        # dataready = core.Signal(basestring)
+        dataready = core.Signal(bytes)
     except Exception:
-        dataready = core.pyqtSignal(str)
+        dataready = core.Signal(str)
 
     def __init__(self, address, br):
         super(SnifferThread, self).__init__()

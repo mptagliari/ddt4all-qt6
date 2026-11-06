@@ -1,8 +1,8 @@
 import math
 import string
 
-import PyQt5.QtCore as core
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import widgets
 
 from ddt4all.core.ecu.data_item import DataItem
 import ddt4all.options as options

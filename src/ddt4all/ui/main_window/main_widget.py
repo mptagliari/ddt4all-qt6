@@ -4,9 +4,9 @@ import json
 import os
 from pathlib import Path
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.core.ecu.ecu_file import EcuFile
@@ -34,7 +34,9 @@ from ddt4all.ui.main_window.icons_paths import (
     ICON_HEX,
     ICON_COMMAND,
     ICON_FLOWCONTROL,
+    ICON_USB,
 )
+from ddt4all.ui.main_window.connection import connect_adapter, disconnect_adapter
 from ddt4all.ui.main_window.main_window_options import MainWindowOptions
 from ddt4all.ui.main_window.utils import (
     isWritable,
@@ -46,14 +48,7 @@ import ddt4all.version as version
 
 _ = options.translator('ddt4all')
 
-# Optional WebEngine import for enhanced features
-try:
-    import PyQt5.QtWebEngineWidgets as webkitwidgets
-    HAS_WEBENGINE = True
-except ImportError:
-    print(_("Warning: PyQtWebEngine not available. Some features may be limited."))
-    webkitwidgets = None
-    HAS_WEBENGINE = False
+from ddt4all.qt import HAS_WEBENGINE, webengine as webkitwidgets
 
 BASE_DIR = Path(__file__).resolve().parent
 plugins_base_dir = BASE_DIR / ".." / ".." / "plugins"
@@ -87,10 +82,11 @@ class MainWidget(widgets.QMainWindow):
             msgbox.setIcon(widgets.QMessageBox.Warning)
             msgbox.setText(_("No database found"))
             msgbox.setInformativeText(_("Check documentation"))
-            msgbox.exec_()
+            msgbox.exec()
 
         self.paramview = None
-        
+        self.current_ecu = None
+
         # Initialize documentation view based on WebEngine availability
         if HAS_WEBENGINE:
             self.docview = webkitwidgets.QWebEngineView()
@@ -98,11 +94,11 @@ class MainWidget(widgets.QMainWindow):
             
             # Configure WebEngine settings for optimal GitHub wiki experience
             settings = self.docview.settings()
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.JavascriptEnabled, False)  # Disabled to prevent compatibility errors
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.AutoLoadImages, True)     # Better visual experience
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.PluginsEnabled, False)    # Security: disable plugins
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.LocalStorageEnabled, False)  # Security: no local storage
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.LocalContentCanAccessRemoteUrls, False)  # Security
+            settings.setAttribute(webkitwidgets.WebAttribute.JavascriptEnabled, False)  # Disabled to prevent compatibility errors
+            settings.setAttribute(webkitwidgets.WebAttribute.AutoLoadImages, True)     # Better visual experience
+            settings.setAttribute(webkitwidgets.WebAttribute.PluginsEnabled, False)    # Security: disable plugins
+            settings.setAttribute(webkitwidgets.WebAttribute.LocalStorageEnabled, False)  # Security: no local storage
+            settings.setAttribute(webkitwidgets.WebAttribute.LocalContentCanAccessRemoteUrls, False)  # Security
         else:
             # Fallback to basic text widget for documentation
             self.docview = widgets.QTextEdit()
@@ -184,15 +180,15 @@ class MainWidget(widgets.QMainWindow):
         self.tabbedview.addTab(self.scrollview, _("Screen"))
         self.tabbedview.addTab(self.snifferview, _("CAN Sniffer"))
 
-        if options.simulation_mode:
-            self.buttonEditor = ButtonEditor()
-            self.requesteditor = RequestEditor()
-            self.dataitemeditor = DataEditor()
-            self.ecuparameditor = EcuParamEditor()
-            self.tabbedview.addTab(self.requesteditor, _("Requests"))
-            self.tabbedview.addTab(self.dataitemeditor, _("Data"))
-            self.tabbedview.addTab(self.buttonEditor, _("Buttons"))
-            self.tabbedview.addTab(self.ecuparameditor, _("Ecu parameters"))
+        # Offline editors; they are disabled while connected (see applyConnectionState)
+        self.buttonEditor = ButtonEditor()
+        self.requesteditor = RequestEditor()
+        self.dataitemeditor = DataEditor()
+        self.ecuparameditor = EcuParamEditor()
+        self.tabbedview.addTab(self.requesteditor, _("Requests"))
+        self.tabbedview.addTab(self.dataitemeditor, _("Data"))
+        self.tabbedview.addTab(self.buttonEditor, _("Buttons"))
+        self.tabbedview.addTab(self.ecuparameditor, _("Ecu parameters"))
 
         screen_widget = widgets.QWidget()
         self.treedock_widget = widgets.QDockWidget(self)
@@ -235,40 +231,44 @@ class MainWidget(widgets.QMainWindow):
         self.toolbar = self.addToolBar(_("ToolBar"))
         self.toolbar.setContextMenuPolicy(core.Qt.PreventContextMenu)
 
-        self.diagaction = widgets.QAction(gui.QIcon(ICON_DTC), _("Read DTC"), self)
+        self.connectaction = gui.QAction(gui.QIcon(ICON_USB), _("Connect"), self)
+        self.connectaction.setToolTip(_("Connect to the diagnostic adapter"))
+        self.connectaction.triggered.connect(self.toggleConnection)
+
+        self.diagaction = gui.QAction(gui.QIcon(ICON_DTC), _("Read DTC"), self)
         self.diagaction.triggered.connect(self.readDtc)
         self.diagaction.setEnabled(False)
 
-        self.log = widgets.QAction(gui.QIcon(ICON_LOG), _("Full log"), self)
+        self.log = gui.QAction(gui.QIcon(ICON_LOG), _("Full log"), self)
         self.log.setCheckable(True)
         self.log.setChecked(options.log_all)
         self.log.triggered.connect(self.changeLogMode)
         if options.dark_mode:
-            self.expert = widgets.QAction(gui.QIcon(ICON_EXPERT_B), _("Expert mode (enable writing)"), self)
+            self.expert = gui.QAction(gui.QIcon(ICON_EXPERT_B), _("Expert mode (enable writing)"), self)
         else:
-            self.expert = widgets.QAction(gui.QIcon(ICON_EXPERT), _("Expert mode (enable writing)"), self)
+            self.expert = gui.QAction(gui.QIcon(ICON_EXPERT), _("Expert mode (enable writing)"), self)
         self.expert.setCheckable(True)
         self.expert.setChecked(options.promode)
         self.expert.triggered.connect(self.changeUserMode)
 
-        self.autorefresh = widgets.QAction(gui.QIcon(ICON_AUTOREFRESH), _("Auto refresh"), self)
+        self.autorefresh = gui.QAction(gui.QIcon(ICON_AUTOREFRESH), _("Auto refresh"), self)
         self.autorefresh.setCheckable(True)
         self.autorefresh.setChecked(options.auto_refresh)
         self.autorefresh.triggered.connect(self.changeAutorefresh)
 
-        self.refresh = widgets.QAction(gui.QIcon(ICON_REFRESH), _("Refresh (one shot)"), self)
+        self.refresh = gui.QAction(gui.QIcon(ICON_REFRESH), _("Refresh (one shot)"), self)
         self.refresh.triggered.connect(self.refreshParams)
         self.refresh.setEnabled(not options.auto_refresh)
 
-        self.hexinput = widgets.QAction(gui.QIcon(ICON_HEX), _("Manual command"), self)
+        self.hexinput = gui.QAction(gui.QIcon(ICON_HEX), _("Manual command"), self)
         self.hexinput.triggered.connect(self.hexeditor)
         self.hexinput.setEnabled(False)
 
-        self.cominput = widgets.QAction(gui.QIcon(ICON_COMMAND), _("Manual request"), self)
+        self.cominput = gui.QAction(gui.QIcon(ICON_COMMAND), _("Manual request"), self)
         self.cominput.triggered.connect(self.command_editor)
         self.cominput.setEnabled(False)
 
-        self.fctrigger = widgets.QAction(gui.QIcon(ICON_FLOWCONTROL), _("Software flow control"), self)
+        self.fctrigger = gui.QAction(gui.QIcon(ICON_FLOWCONTROL), _("Software flow control"), self)
         self.fctrigger.setCheckable(True)
         self.fctrigger.triggered.connect(self.flow_control)
 
@@ -287,6 +287,7 @@ class MainWidget(widgets.QMainWindow):
         self.zoominbutton.clicked.connect(self.zoomin)
         self.zoomoutbutton.clicked.connect(self.zoomout)
 
+        self.toolbar.addAction(self.connectaction)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.log)
         self.toolbar.addSeparator()
@@ -312,12 +313,11 @@ class MainWidget(widgets.QMainWindow):
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.zoomoutbutton)
 
-        if options.simulation_mode:
-            self.ui_edit_button = widgets.QPushButton(_("UI Edit"))
-            self.ui_edit_button.setCheckable(True)
-            self.toolbar.addSeparator()
-            self.toolbar.addWidget(self.ui_edit_button)
-            self.ui_edit_button.clicked.connect(self.toggle_edit)
+        self.ui_edit_button = widgets.QPushButton(_("UI Edit"))
+        self.ui_edit_button.setCheckable(True)
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(self.ui_edit_button)
+        self.ui_edit_button.clicked.connect(self.toggle_edit)
 
         if not os.path.exists(get_vehicles_dir()):
             os.mkdir(get_vehicles_dir())
@@ -369,27 +369,27 @@ class MainWidget(widgets.QMainWindow):
         # View menu
         view_menu = menu.addMenu(_("View"))
         carlist_order_menu = view_menu.addMenu(_("CarList Order"))
-        self.carlist_order_by_code = widgets.QAction(_("By Project Code"), carlist_order_menu)
+        self.carlist_order_by_code = gui.QAction(_("By Project Code"), carlist_order_menu)
         self.carlist_order_by_code.setCheckable(True)
         self.carlist_order_by_code.setChecked(options.get_carlist_sort_mode() == "code")
         self.carlist_order_by_code.triggered.connect(self.setCarListOrderCode)
         carlist_order_menu.addAction(self.carlist_order_by_code)
-        self.carlist_order_by_name = widgets.QAction(_("By Car Name"), carlist_order_menu)
+        self.carlist_order_by_name = gui.QAction(_("By Car Name"), carlist_order_menu)
         self.carlist_order_by_name.setCheckable(True)
         self.carlist_order_by_name.setChecked(options.get_carlist_sort_mode() == "name")
         self.carlist_order_by_name.triggered.connect(self.setCarListOrderName)
         carlist_order_menu.addAction(self.carlist_order_by_name)
         
         # Make actions mutually exclusive
-        self.carlist_order_group = widgets.QActionGroup(self)
+        self.carlist_order_group = gui.QActionGroup(self)
         self.carlist_order_group.addAction(self.carlist_order_by_code)
         self.carlist_order_group.addAction(self.carlist_order_by_name)
 
         # Theme menu (moved under View menu) with explicit Dark/Light selection
         theme_menu = view_menu.addMenu(_("Theme"))
-        theme_dark_action = widgets.QAction(_("Dark Theme"), theme_menu)
+        theme_dark_action = gui.QAction(_("Dark Theme"), theme_menu)
         theme_dark_action.setCheckable(True)
-        theme_light_action = widgets.QAction(_("Light Theme"), theme_menu)
+        theme_light_action = gui.QAction(_("Light Theme"), theme_menu)
         theme_light_action.setCheckable(True)
 
         show_menu = view_menu.addMenu(_("Panels"))
@@ -403,7 +403,7 @@ class MainWidget(widgets.QMainWindow):
         view_menu.addAction(self.toolbar.toggleViewAction())
 
         # Group theme actions so only one can be active
-        theme_action_group = widgets.QActionGroup(self)
+        theme_action_group = gui.QActionGroup(self)
         theme_action_group.addAction(theme_dark_action)
         theme_action_group.addAction(theme_light_action)
         theme_action_group.setExclusive(True)
@@ -422,9 +422,9 @@ class MainWidget(widgets.QMainWindow):
         theme_menu.addAction(theme_light_action)
 
         actionmenu = self.screenmenu.addMenu(_("Action"))
-        cat_action = widgets.QAction(_("New Category"), actionmenu)
-        screen_action = widgets.QAction(_("New Screen"), actionmenu)
-        rename_action = widgets.QAction(_("Rename"), actionmenu)
+        cat_action = gui.QAction(_("New Category"), actionmenu)
+        screen_action = gui.QAction(_("New Screen"), actionmenu)
+        rename_action = gui.QAction(_("Rename"), actionmenu)
         actionmenu.addAction(cat_action)
         actionmenu.addAction(screen_action)
         actionmenu.addAction(rename_action)
@@ -473,7 +473,7 @@ class MainWidget(widgets.QMainWindow):
         about_content = help_menu.addAction(_("About"))
         about_content.triggered.connect(self.about_content_msg)
 
-        self.setConnected(True)
+        self.applyConnectionState()
         self.tabbedview.setCurrentIndex(1)
         self.showMaximized()
 
@@ -490,7 +490,7 @@ class MainWidget(widgets.QMainWindow):
             html += f'<tr><td><a href="https://github.com/{name}" style="text-decoration: none; cursor: pointer;" target="_blank">{name}</a>: </td><td>{role}</td></tr>'
         html += '</table>'
         msgbox.setInformativeText(html)
-        msgbox.exec_()
+        msgbox.exec()
 
     def setCarListOrderCode(self):
         """Set CarList sorting to by project code"""
@@ -521,7 +521,7 @@ class MainWidget(widgets.QMainWindow):
         msgbox.setWindowTitle(_("History cleared"))
         msgbox.setText(_("Last selected vehicle and ECU history has been cleared."))
         msgbox.setIcon(widgets.QMessageBox.Information)
-        msgbox.exec_()
+        msgbox.exec()
 
     def clearHistoryWindows(self):
         """Empty the "Ecu Window" and "Screen Window" docks.
@@ -578,7 +578,7 @@ class MainWidget(widgets.QMainWindow):
         msgbox.setWindowTitle(_("Configuration Reset"))
         msgbox.setText(_("The configuration has been reset."))
         msgbox.setIcon(widgets.QMessageBox.Information)
-        msgbox.exec_()
+        msgbox.exec()
 
     def wiki_about(self):
         url = core.QUrl("https://github.com/cedricp/ddt4all/wiki", core.QUrl.TolerantMode)
@@ -636,8 +636,11 @@ class MainWidget(widgets.QMainWindow):
         
     def show_options_dialog(self):
         """Show options dialog for device settings"""
+        # The dialog's "check adapter" flips simulation_mode; keep it consistent with options.elm
+        was_offline = options.simulation_mode
         options_dialog = MainWindowOptions(self.app)
-        options_dialog.exec_()
+        options_dialog.exec()
+        options.simulation_mode = was_offline
 
     def set_can_combo(self, bus):
         # Keep the user's CAN line choice when the combo is rebuilt (e.g. on every screen change);
@@ -675,7 +678,7 @@ class MainWidget(widgets.QMainWindow):
 
     def identEcu(self):
         dialog = EcuFinder(self.ecu_scan)
-        dialog.exec_()
+        dialog.exec()
 
     def changecanspeed(self):
         item = self.canlinecombo.currentIndex()
@@ -724,7 +727,7 @@ class MainWidget(widgets.QMainWindow):
             mbox.setWindowIcon(appIcon)
             mbox.setWindowTitle(version.__appname__)
             mbox.setText("Cannot write to directory " + os.path.dirname(filename))
-            mbox.exec_()
+            mbox.exec()
             return
 
         self.logview.append(_("Zipping XML database... (this can take a few minutes)"))
@@ -743,7 +746,7 @@ class MainWidget(widgets.QMainWindow):
             msgbox.setIcon(widgets.QMessageBox.Warning)
             msgbox.setText(_("No database found"))
             msgbox.setInformativeText(_("Check documentation"))
-            msgbox.exec_()
+            msgbox.exec()
             return
         pim()
         if self.paramview:
@@ -786,7 +789,7 @@ class MainWidget(widgets.QMainWindow):
                 msgbox.setIcon(widgets.QMessageBox.Warning)
                 msgbox.setText(_("No database found"))
                 msgbox.setInformativeText(_("Check documentation"))
-                msgbox.exec_()
+                msgbox.exec()
                 return
             self.paramview.createCategory(necatname)
             self.treeview_params.addTopLevelItem(widgets.QTreeWidgetItem([necatname]))
@@ -910,7 +913,7 @@ class MainWidget(widgets.QMainWindow):
         if options.configuration.get('doip_scan', True):
             msgBox.addButton(doipbutton, widgets.QMessageBox.ActionRole)
         msgBox.addButton(cancelbutton, widgets.QMessageBox.NoRole)
-        msgBox.exec_()
+        msgBox.exec()
 
         if msgBox.clickedButton() == cancelbutton:
             return
@@ -978,6 +981,67 @@ class MainWidget(widgets.QMainWindow):
         else:
             self.connectedstatus.setStyleSheet("background-color : red; color: black")
             self.connectedstatus.setText(_("DISCONNECTED"))
+
+    def toggleConnection(self):
+        """Connect to / disconnect from the adapter. The app starts offline."""
+        if options.simulation_mode:
+            if not connect_adapter(self.app):
+                return
+        else:
+            disconnect_adapter()
+        self.applyConnectionState()
+
+    def applyConnectionState(self):
+        connected = not options.simulation_mode
+        self.connectaction.setText(_("Disconnect") if connected else _("Connect"))
+        self.connectaction.setToolTip(
+            _("Disconnect from the adapter") if connected else _("Connect to the diagnostic adapter"))
+
+        # Screen editing is an offline feature
+        options.mode_edit = False
+        self.ui_edit_button.setChecked(False)
+        self.ui_edit_button.setEnabled(not connected)
+        for editor in (self.requesteditor, self.dataitemeditor, self.buttonEditor, self.ecuparameditor):
+            self.tabbedview.setTabEnabled(self.tabbedview.indexOf(editor), not connected)
+        # Writing to the ECU is never carried over from one connection to the next
+        options.promode = False
+        self.expert.setChecked(False)
+
+        if connected and self.screenlogfile is None:
+            Path(get_logs_dir()).mkdir(parents=True, exist_ok=True)
+            self.screenlogfile = open(os.path.join(get_logs_dir() / "screens.txt"), "at", encoding="utf-8")
+        elif not connected and self.screenlogfile is not None:
+            self.screenlogfile.close()
+            self.screenlogfile = None
+
+        self.setConnected(connected)
+        if connected:
+            # No session is started on an ECU the user has not picked: unload the one that
+            # was restored/opened offline. Selecting it in the "Ecu Window" starts its session.
+            self.closeCurrentEcu()
+            self.logview.append(_("Connected. Select an ECU in the Ecu Window to start its session."))
+        elif self.current_ecu is not None:
+            # Back offline: show the last ECU again from the database (no adapter involved)
+            self.set_param_file(*self.current_ecu)
+
+    def closeCurrentEcu(self):
+        """Unload the ECU screen (stopping its timers) without forgetting which one it was."""
+        if self.paramview:
+            try:
+                self.paramview.timer.stop()
+                self.paramview.tester_timer.stop()
+            except (AttributeError, RuntimeError):
+                pass
+            self.paramview.setParent(None)
+            self.paramview.close()
+            self.paramview.destroy()
+            self.paramview = None
+        self.scrollview.setWidget(widgets.QWidget())
+        self.treeview_params.clear()
+        self.screennames = []
+        self.treeview_ecu.clearSelection()
+        for action in (self.diagaction, self.hexinput, self.cominput):
+            action.setEnabled(False)
 
     def saveEcus(self):
         filename_tuple = widgets.QFileDialog.getSaveFileName(self, _("Save vehicule (keep '.ecu' extension)"),
@@ -1146,10 +1210,7 @@ class MainWidget(widgets.QMainWindow):
             self.paramview.tester_timer.stop()
         self.snifferview.stopthread()
         super(MainWidget, self).closeEvent(event)
-        try:
-            del options.elm
-        except AttributeError:
-            pass
+        disconnect_adapter()
     
     def resizeEvent(self, event):
         """Handle window resize to adjust screen widths while preserving vertical scrolling"""
@@ -1204,6 +1265,7 @@ class MainWidget(widgets.QMainWindow):
         options.set_last_opened_ecu(ecu_name)
 
     def set_param_file(self, ecu_file, ecu_addr, ecu_name, isxml):
+        self.current_ecu = (ecu_file, ecu_addr, ecu_name, isxml)
         self.diagaction.setEnabled(True)
         self.hexinput.setEnabled(True)
         self.cominput.setEnabled(True)

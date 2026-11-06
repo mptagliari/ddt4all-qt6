@@ -1,7 +1,7 @@
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.main_window.icons_paths import (
@@ -32,7 +32,7 @@ class DonationWidget(widgets.QLabel):
         msgbox.addButton(okbutton, widgets.QMessageBox.YesRole)
         msgbox.addButton(widgets.QPushButton(_("No, I don't")), widgets.QMessageBox.NoRole)
         okbutton.clicked.connect(self.donate)
-        msgbox.exec_()
+        msgbox.exec()
 
     def donate(self):
         url = core.QUrl(
@@ -45,4 +45,4 @@ class DonationWidget(widgets.QLabel):
         msgbox.setWindowIcon(appIcon)
         translate_arg = _("Thank you for you contribution, if nothing happens, please go to")
         msgbox.setText("<center>" + translate_arg + ": https://github.com/cedricp/ddt4all</center>")
-        msgbox.exec_()
+        msgbox.exec()

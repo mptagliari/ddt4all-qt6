@@ -1,6 +1,6 @@
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.utils import PATH_PNG_ODB
@@ -68,7 +68,7 @@ class EcuCommand(widgets.QDialog):
         msgbox.setWindowIcon(appIcon)
         msgbox.setWindowTitle(version.__appname__)
         msgbox.setText(text)
-        msgbox.exec_()
+        msgbox.exec()
 
     def recompute(self):
         frame = self.compute_frame(False)
@@ -90,7 +90,7 @@ class EcuCommand(widgets.QDialog):
                     msgbox.setWindowIcon(appIcon)
                     msgbox.setWindowTitle(version.__appname__)
                     msgbox.setText("Missing data in table")
-                    msgbox.exec_()
+                    msgbox.exec()
                 return "Missing input data"
 
             if curtext is None:
@@ -119,7 +119,7 @@ class EcuCommand(widgets.QDialog):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText("ECU returned error (check logview)")
-            msgbox.exec_()
+            msgbox.exec()
             return
         received_data = self.current_request.get_values_from_stream(reveived_stream)
 

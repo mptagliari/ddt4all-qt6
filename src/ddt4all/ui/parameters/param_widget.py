@@ -3,13 +3,13 @@ import json
 import os
 import time
 import xml.dom.minidom
-import zipfile
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 from ddt4all.core.ecu.ecu_file import EcuFile
+from ddt4all.core.ecu.ecu_zip import get_zip
 from ddt4all.core.elm.elm import reconnect_elm
 from ddt4all.core.parameters.helpers import dumpXML
 import ddt4all.options as options
@@ -23,6 +23,9 @@ from ddt4all.ui.utils import PATH_PNG_ODB
 import ddt4all.version as version
 
 _ = options.translator('ddt4all')
+
+TESTER_INTERVAL_MS = 1500
+TESTER_MAX_INTERVAL_MS = 12000
 
 class ParamWidget(widgets.QWidget):
     def __init__(self, parent, ddtfile, ecu_addr, ecu_name, logview, prot_status, canline):
@@ -57,9 +60,11 @@ class ParamWidget(widgets.QWidget):
         self.timer.setSingleShot(True)
         self.tester_timer = core.QTimer()
         self.tester_timer.setSingleShot(False)
-        self.tester_timer.setInterval(1500)
+        self.tester_timer.setInterval(TESTER_INTERVAL_MS)
         self.tester_timer.timeout.connect(self.tester_send)
-        self.tester_timer.start()
+        # Keep-alive only makes sense with a real adapter
+        if not options.simulation_mode:
+            self.tester_timer.start()
         self.tester_presend_command = ""
         self.initXML()
         self.sliding = False
@@ -84,7 +89,16 @@ class ParamWidget(widgets.QWidget):
         if options.auto_refresh:
             return
 
-        self.sendElm(self.tester_presend_command, True)
+        response = self.sendElm(self.tester_presend_command, True)
+
+        # sendElm() blocks the UI until the ELM answers or times out. If the ECU is
+        # not answering, back off instead of freezing the UI again every 1.5 s.
+        if not response or str(response).startswith('WRONG'):
+            interval = min(self.tester_timer.interval() * 2, TESTER_MAX_INTERVAL_MS)
+        else:
+            interval = TESTER_INTERVAL_MS
+        if interval != self.tester_timer.interval():
+            self.tester_timer.setInterval(interval)
 
     def saveEcu(self, name=None):
         if not name:
@@ -329,8 +343,8 @@ class ParamWidget(widgets.QWidget):
             if event.button() == core.Qt.RightButton:
                 self.currentwidget = widget
                 popmenu = widgets.QMenu(self)
-                addbuttonaction = widgets.QAction(_("Add button"), popmenu)
-                addlabelaction = widgets.QAction(_("Add label"), popmenu)
+                addbuttonaction = gui.QAction(_("Add button"), popmenu)
+                addlabelaction = gui.QAction(_("Add label"), popmenu)
 
                 popmenu.addAction(addbuttonaction)
                 popmenu.addAction(addlabelaction)
@@ -338,19 +352,19 @@ class ParamWidget(widgets.QWidget):
                 addlabelaction.triggered.connect(self.addLabel)
 
                 if isinstance(widget, LabelWidget):
-                    renamelabelaction = widgets.QAction(_("Rename label"), popmenu)
-                    changecoloraction = widgets.QAction(_("Change color"), popmenu)
+                    renamelabelaction = gui.QAction(_("Rename label"), popmenu)
+                    changecoloraction = gui.QAction(_("Change color"), popmenu)
                     popmenu.addAction(renamelabelaction)
                     popmenu.addAction(changecoloraction)
                     renamelabelaction.triggered.connect(self.renameLabel)
                     changecoloraction.triggered.connect(self.changeLabelColor)
                 if found:
-                    removeaction = widgets.QAction(_("Remove element"), popmenu)
+                    removeaction = gui.QAction(_("Remove element"), popmenu)
                     popmenu.addSeparator()
                     popmenu.addAction(removeaction)
                     removeaction.triggered.connect(self.removeElement)
 
-                popmenu.exec_(gui.QCursor.pos())
+                popmenu.exec(gui.QCursor.pos())
 
             if event.button() == core.Qt.LeftButton:
                 if not found or widget == self.panel:
@@ -456,7 +470,7 @@ class ParamWidget(widgets.QWidget):
 
     def command_editor(self):
         editor = EcuCommand(self, self.ecurequestsparser, self.sds)
-        editor.exec_()
+        editor.exec()
 
     def hexeditor(self):
         self.dialogbox = widgets.QWidget()
@@ -502,8 +516,8 @@ class ParamWidget(widgets.QWidget):
         self.input.returnPressed.connect(self.send_manual_cmd)
         self.output = widgets.QLineEdit()
         self.output.setReadOnly(True)
-        hexvalidaor = core.QRegExp("^[\\s0-9a-fA-F]+")
-        rev = gui.QRegExpValidator(hexvalidaor, self)
+        hexvalidaor = core.QRegularExpression("^[\\s0-9a-fA-F]+")
+        rev = gui.QRegularExpressionValidator(hexvalidaor, self)
         self.input.setValidator(rev)
         wlayout.addWidget(diaglabel)
         wlayout.addWidget(self.diagsession)
@@ -573,7 +587,7 @@ class ParamWidget(widgets.QWidget):
             jsondata = jsfile.read()
             jsfile.close()
         else:
-            zf = zipfile.ZipFile("ecu.zip", mode='r')
+            zf = get_zip("ecu.zip")
             layoutfile = self.ddtfile[5:] + ".layout"
             jsondata = zf.read(layoutfile)
         if os.path.exists(targetsfile):
@@ -938,7 +952,7 @@ class ParamWidget(widgets.QWidget):
                 msgbox.setWindowIcon(appIcon)
                 msgbox.setWindowTitle(version.__appname__)
                 msgbox.setText(message)
-                msgbox.exec_()
+                msgbox.exec()
 
         request_list = self.button_requests[txt]
         for req in request_list:
@@ -1016,7 +1030,7 @@ class ParamWidget(widgets.QWidget):
                 msgbox.setWindowIcon(appIcon)
                 msgbox.setWindowTitle(_("For your safety"))
                 msgbox.setText(_("<center>BLOCKED COMMAND</center>\nActivate expert mode to unlock"))
-                msgbox.exec_()
+                msgbox.exec()
                 blocked = True
 
             if self.logfile is not None and len(logdict) > 0:
@@ -1261,7 +1275,7 @@ class ParamWidget(widgets.QWidget):
         msgbox.setStandardButtons(widgets.QMessageBox.Yes)
         msgbox.addButton(widgets.QMessageBox.Abort)
         msgbox.setDefaultButton(widgets.QMessageBox.Abort)
-        userreply = msgbox.exec_()
+        userreply = msgbox.exec()
 
         if userreply == widgets.QMessageBox.Abort:
             return
@@ -1286,7 +1300,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText("There was an error clearing DTC")
-            msgbox.exec_()
+            msgbox.exec()
             options.main_window.logview.append("<font color=red>" + _("Clear DTC failed") + "</font>")
         else:
             options.main_window.logview.append("<font color=green>" + _("Clear DTC successfully done") + "</font>")
@@ -1324,7 +1338,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("Invalid response for ReadDTC command"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         can_response = can_response.split(' ')
@@ -1336,7 +1350,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("Read DTC returned an error"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         # Handle no DTC
@@ -1347,7 +1361,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("No DTC"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         # Ask for more DTCs, allow only 50 iterations in case infinite loop
@@ -1417,7 +1431,7 @@ class ParamWidget(widgets.QWidget):
             can_response = can_response[shiftbytecount:]
 
         dtc_view.setHtml(html)
-        self.dtcdialog.exec_()
+        self.dtcdialog.exec()
 
     def requestNameChanged(self, oldname, newname):
         for screen_k, screen_data in self.layoutdict['screens'].items():

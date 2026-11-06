@@ -118,4 +118,4 @@ class TestClearHistory:
         msgbox.setWindowTitle.assert_called_once_with(_("History cleared"))
         msgbox.setText.assert_called_once_with(
             _("Last selected vehicle and ECU history has been cleared."))
-        msgbox.exec_.assert_called_once_with()
+        msgbox.exec.assert_called_once_with()

@@ -1,4 +1,4 @@
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import widgets
 
 class HexLineEdit(widgets.QLineEdit):
     def __init__(self, num, alpha):

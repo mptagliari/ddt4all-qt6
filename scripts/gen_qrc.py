@@ -72,9 +72,13 @@ def generate_qrc(
 
 def compile_qrc(qrc_path: Path, output_py: Path) -> None:
     output_py.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["pyrcc5", str(qrc_path), "-o", str(output_py)]
+    cmd = ["pyside6-rcc", str(qrc_path), "-o", str(output_py)]
     print("[gen-qrc] Compile:", " ".join(cmd))
     subprocess.check_call(cmd)
+    # Import Qt through ddt4all.qt so the module works with PySide6 and PyQt5
+    content = output_py.read_text(encoding="utf-8")
+    content = content.replace("from PySide6 import QtCore", "from ddt4all.qt import core as QtCore")
+    output_py.write_text(content, encoding="utf-8")
     print(f"[gen-qrc] Wrote: {output_py}")
     # Remove the generated qrc file
     #qrc_path.unlink()
@@ -86,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--project-root", default=".", help="Project root (default: current directory).")
     parser.add_argument("--out-qrc", default="scripts/resources.qrc", help="Output .qrc path relative to project root.")
-    parser.add_argument("--compile", action="store_true", help="Also compile to a Python module using pyrcc5.")
+    parser.add_argument("--compile", action="store_true", help="Also compile to a Python module using pyside6-rcc.")
     parser.add_argument(
         "--out-py",
         default="src/ddt4all/generated/resources_rc.py",
