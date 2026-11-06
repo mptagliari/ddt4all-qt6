@@ -11,7 +11,7 @@ A personal fork of [cedricp/ddt4all](https://github.com/cedricp/ddt4all) (DDT4AL
 - `origin` = upstream `cedricp/ddt4all` (read-only; no push access).
 - `fork` = `mptagliari/ddt4all-qt6` (the fork). The `mptag-code` account does not have push access to it yet; ask the owner for collaborator access before pushing or opening PRs, and never use the owner's personal account instead.
 - Fork branches, each one pushed and one concern each: `ecu-list-init-speed`, `tester-present-backoff`, `zip-handle-cache`, `offline-connect-button`, `qt-pyside6-support`, `qt6-integrated`. The `.patch` files in `ddt4all-patches/` are exports of the first three.
-- `pyside6-migration-wip` is a **local-only, unreviewed snapshot** (PySide6 migration, `diagnostics/` package with the ABS reader, `qt.py`, `core/ecu/ecu_zip.py`, ELM lifecycle tests). It is not pushed. A backup bundle is at `~/vibecoding/ddt4all-qt6-wip.bundle`. Do not delete it; split it into focused branches before proposing anything upstream.
+- `pyside6-migration-wip` is an **unreviewed snapshot** (PySide6 migration, `diagnostics/` package with the ABS reader, `qt.py`, `core/ecu/ecu_zip.py`, ELM lifecycle tests). It is pushed to the fork as a safety copy only; a backup bundle is at `~/vibecoding/ddt4all-qt6-wip.bundle`. Do not delete either; split it into focused branches before proposing anything upstream.
 - Whether upstream received a pull request for any of these branches is not recorded here; the owner opened an issue upstream. Check upstream before assuming.
 
 ## Local layout
