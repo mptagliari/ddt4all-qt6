@@ -3,13 +3,13 @@ import json
 import os
 import time
 import xml.dom.minidom
-import zipfile
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 from ddt4all.core.ecu.ecu_file import EcuFile
+from ddt4all.core.ecu.ecu_zip import get_zip
 from ddt4all.core.elm.elm import reconnect_elm
 from ddt4all.core.parameters.helpers import dumpXML
 import ddt4all.options as options
@@ -53,9 +53,9 @@ class ParamWidget(widgets.QWidget):
         self.inputdict = {}
         self.presend = []
         self.currentwidget = None
-        self.timer = core.QTimer()
+        self.timer = core.QTimer(self)
         self.timer.setSingleShot(True)
-        self.tester_timer = core.QTimer()
+        self.tester_timer = core.QTimer(self)
         self.tester_timer.setSingleShot(False)
         self.tester_timer.setInterval(1500)
         self.tester_timer.timeout.connect(self.tester_send)
@@ -71,6 +71,11 @@ class ParamWidget(widgets.QWidget):
         self.record_values = []
         self.record_keys = {}
         self.infobox = None
+
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.tester_timer.stop()
+        super(ParamWidget, self).closeEvent(event)
 
     def set_soft_fc(self, b):
         if options.elm is not None:
@@ -329,8 +334,8 @@ class ParamWidget(widgets.QWidget):
             if event.button() == core.Qt.RightButton:
                 self.currentwidget = widget
                 popmenu = widgets.QMenu(self)
-                addbuttonaction = widgets.QAction(_("Add button"), popmenu)
-                addlabelaction = widgets.QAction(_("Add label"), popmenu)
+                addbuttonaction = gui.QAction(_("Add button"), popmenu)
+                addlabelaction = gui.QAction(_("Add label"), popmenu)
 
                 popmenu.addAction(addbuttonaction)
                 popmenu.addAction(addlabelaction)
@@ -338,19 +343,19 @@ class ParamWidget(widgets.QWidget):
                 addlabelaction.triggered.connect(self.addLabel)
 
                 if isinstance(widget, LabelWidget):
-                    renamelabelaction = widgets.QAction(_("Rename label"), popmenu)
-                    changecoloraction = widgets.QAction(_("Change color"), popmenu)
+                    renamelabelaction = gui.QAction(_("Rename label"), popmenu)
+                    changecoloraction = gui.QAction(_("Change color"), popmenu)
                     popmenu.addAction(renamelabelaction)
                     popmenu.addAction(changecoloraction)
                     renamelabelaction.triggered.connect(self.renameLabel)
                     changecoloraction.triggered.connect(self.changeLabelColor)
                 if found:
-                    removeaction = widgets.QAction(_("Remove element"), popmenu)
+                    removeaction = gui.QAction(_("Remove element"), popmenu)
                     popmenu.addSeparator()
                     popmenu.addAction(removeaction)
                     removeaction.triggered.connect(self.removeElement)
 
-                popmenu.exec_(gui.QCursor.pos())
+                popmenu.exec(gui.QCursor.pos())
 
             if event.button() == core.Qt.LeftButton:
                 if not found or widget == self.panel:
@@ -456,7 +461,7 @@ class ParamWidget(widgets.QWidget):
 
     def command_editor(self):
         editor = EcuCommand(self, self.ecurequestsparser, self.sds)
-        editor.exec_()
+        editor.exec()
 
     def hexeditor(self):
         self.dialogbox = widgets.QWidget()
@@ -502,8 +507,8 @@ class ParamWidget(widgets.QWidget):
         self.input.returnPressed.connect(self.send_manual_cmd)
         self.output = widgets.QLineEdit()
         self.output.setReadOnly(True)
-        hexvalidaor = core.QRegExp("^[\\s0-9a-fA-F]+")
-        rev = gui.QRegExpValidator(hexvalidaor, self)
+        hexvalidaor = core.QRegularExpression("^[\\s0-9a-fA-F]+")
+        rev = gui.QRegularExpressionValidator(hexvalidaor, self)
         self.input.setValidator(rev)
         wlayout.addWidget(diaglabel)
         wlayout.addWidget(self.diagsession)
@@ -537,13 +542,23 @@ class ParamWidget(widgets.QWidget):
         self.initELM()
 
     def initELM(self):
+        if not options.simulation_mode and (options.elm is None or not options.elm.connectionStat()):
+            options.main_window.setConnected(False)
+            self.logview.append("ELM transport is closed")
+            return False
         # A (re)connect (e.g. after changing the CAN line speed) leaves the ECU in its default
         # session, so forget the remembered session and let startDiagnosticSession() reopen it.
         self.currentsession = ""
-        connection_status = self.ecurequestsparser.connect_to_hardware(self.canline)
+        try:
+            connection_status = self.ecurequestsparser.connect_to_hardware(self.canline)
+        except (ConnectionError, OSError):
+            options.main_window.setConnected(False)
+            self.logview.append("ELM transport failed; initialization cancelled")
+            return False
         if not connection_status:
             self.logview.append("<font color='red'>" + _("Protocol not supported") + "</font>")
-            return
+            options.main_window.setConnected(False)
+            return False
 
         if self.main_protocol_status:
             if self.ecurequestsparser.ecu_protocol.upper() == "CAN":
@@ -564,6 +579,8 @@ class ParamWidget(widgets.QWidget):
                 self.main_protocol_status.setText("??? @ " + self.ecurequestsparser.funcaddr)
                 print(_("Protocol not supported: ") + self.ecurequestsparser.ecu_protocol)
 
+        return True
+
     def initJSON(self):
         self.layoutdict = None
         layoutfile = "./json/" + os.path.basename(self.ddtfile) + ".layout"
@@ -573,7 +590,7 @@ class ParamWidget(widgets.QWidget):
             jsondata = jsfile.read()
             jsfile.close()
         else:
-            zf = zipfile.ZipFile("ecu.zip", mode='r')
+            zf = get_zip("ecu.zip")
             layoutfile = self.ddtfile[5:] + ".layout"
             jsondata = zf.read(layoutfile)
         if os.path.exists(targetsfile):
@@ -697,6 +714,14 @@ class ParamWidget(widgets.QWidget):
                     break
 
     def sendElm(self, command, auto=False, force=False):
+        try:
+            return self._sendElm(command, auto, force)
+        except (ConnectionError, OSError):
+            options.main_window.setConnected(False)
+            self.logview.append("ELM transport failed; request cancelled")
+            return "WRONG RESPONSE: ELM disconnected"
+
+    def _sendElm(self, command, auto=False, force=False):
         if isinstance(command, bytes):
             command = command.decode("utf-8")
         elif not isinstance(command, str):
@@ -704,16 +729,16 @@ class ParamWidget(widgets.QWidget):
 
         elm_response = '00 ' * 70
         if not options.simulation_mode:
-            if not options.elm.connectionStat():
+            if options.elm is None or not options.elm.connectionStat():
                 options.main_window.setConnected(False)
                 self.logview.append(_("Connection to ELM lost, trying to reconnect..."))
-                if reconnect_elm():
-                    if not options.elm.connectionStatus:
-                        self.logview.append(_("Cannot reconnect..."))
-                        return
-                    # Must reinit ELM
-                    self.initELM()
-                    options.main_window.setConnected(True)
+                if not reconnect_elm():
+                    self.logview.append(_("Cannot reconnect..."))
+                    return "WRONG RESPONSE: ELM disconnected"
+                if options.elm is None or not options.elm.connectionStat() or not self.initELM():
+                    self.logview.append(_("Cannot reconnect..."))
+                    return "WRONG RESPONSE: ELM disconnected"
+                options.main_window.setConnected(True)
 
             if command.startswith('10'):
                 self.logview.append('<font color=blue>' + _(
@@ -938,7 +963,7 @@ class ParamWidget(widgets.QWidget):
                 msgbox.setWindowIcon(appIcon)
                 msgbox.setWindowTitle(version.__appname__)
                 msgbox.setText(message)
-                msgbox.exec_()
+                msgbox.exec()
 
         request_list = self.button_requests[txt]
         for req in request_list:
@@ -1016,7 +1041,7 @@ class ParamWidget(widgets.QWidget):
                 msgbox.setWindowIcon(appIcon)
                 msgbox.setWindowTitle(_("For your safety"))
                 msgbox.setText(_("<center>BLOCKED COMMAND</center>\nActivate expert mode to unlock"))
-                msgbox.exec_()
+                msgbox.exec()
                 blocked = True
 
             if self.logfile is not None and len(logdict) > 0:
@@ -1261,7 +1286,7 @@ class ParamWidget(widgets.QWidget):
         msgbox.setStandardButtons(widgets.QMessageBox.Yes)
         msgbox.addButton(widgets.QMessageBox.Abort)
         msgbox.setDefaultButton(widgets.QMessageBox.Abort)
-        userreply = msgbox.exec_()
+        userreply = msgbox.exec()
 
         if userreply == widgets.QMessageBox.Abort:
             return
@@ -1286,17 +1311,27 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText("There was an error clearing DTC")
-            msgbox.exec_()
+            msgbox.exec()
             options.main_window.logview.append("<font color=red>" + _("Clear DTC failed") + "</font>")
         else:
             options.main_window.logview.append("<font color=green>" + _("Clear DTC successfully done") + "</font>")
 
     def readDTC(self):
-        if not options.simulation_mode:
-            if self.ecurequestsparser.ecu_protocol == "CAN":
-                options.elm.start_session_can('10C0')
-            elif self.ecurequestsparser.ecu_protocol == "KWP2000":
-                options.elm.start_session_iso('10C0')
+        if not options.simulation_mode and (options.elm is None or not options.elm.connectionStat()):
+            options.main_window.setConnected(False)
+            self.logview.append("ELM transport is closed; DTC read cancelled")
+            return
+        try:
+            if not options.simulation_mode:
+                if self.ecurequestsparser.ecu_protocol == "CAN":
+                    options.elm.start_session_can('10C0')
+                elif self.ecurequestsparser.ecu_protocol == "KWP2000":
+                    options.elm.start_session_iso('10C0')
+
+        except (ConnectionError, OSError):
+            options.main_window.setConnected(False)
+            self.logview.append("ELM transport failed; DTC read cancelled")
+            return
 
         if "ReadDTCInformation.ReportDTC" in self.ecurequestsparser.requests:
             request = self.ecurequestsparser.requests["ReadDTCInformation.ReportDTC"]
@@ -1324,7 +1359,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("Invalid response for ReadDTC command"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         can_response = can_response.split(' ')
@@ -1336,7 +1371,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("Read DTC returned an error"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         # Handle no DTC
@@ -1347,7 +1382,7 @@ class ParamWidget(widgets.QWidget):
             msgbox.setWindowIcon(appIcon)
             msgbox.setWindowTitle(version.__appname__)
             msgbox.setText(_("No DTC"))
-            msgbox.exec_()
+            msgbox.exec()
             return
 
         # Ask for more DTCs, allow only 50 iterations in case infinite loop
@@ -1417,7 +1452,7 @@ class ParamWidget(widgets.QWidget):
             can_response = can_response[shiftbytecount:]
 
         dtc_view.setHtml(html)
-        self.dtcdialog.exec_()
+        self.dtcdialog.exec()
 
     def requestNameChanged(self, oldname, newname):
         for screen_k, screen_data in self.layoutdict['screens'].items():

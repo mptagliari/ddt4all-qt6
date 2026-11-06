@@ -11,8 +11,11 @@ description = "DDT4All is a comprehensive tool to create your own ECU parameters
 requires-python = ">=3.8"
 
 dependencies = [
-    "PyQt5>=5.15.0,<5.16.0",
-    "PyQtWebEngine>=5.15.0,<5.16.0",
+    # Qt binding: PySide6 by default, PyQt5 where Qt 6 cannot run
+    # (Python 3.8 / Windows 7 / 32-bit). See ddt4all/qt.py
+    "PySide6>=6.8.0; python_version >= '3.9'",
+    "PyQt5>=5.15.0,<5.16.0; python_version < '3.9'",
+    "PyQtWebEngine>=5.15.0,<5.16.0; python_version < '3.9'",
 
     "pyserial==3.5",
     "pyusb==1.2.1",
@@ -30,7 +33,6 @@ dependencies = [
 [project.optional-dependencies]
 
 dev = [
-    "PyQt5-stubs>=5.15.0,<5.16.0",
 
     # pytest versions that still support Python 3.8
     "coverage>=7.0.0,<=7.6.1",

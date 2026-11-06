@@ -1,5 +1,5 @@
-import PyQt5.QtCore as core
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.data_editor.button_data import ButtonData

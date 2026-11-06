@@ -38,7 +38,7 @@ class Port:
     def __init__(self, portName, speed, adapter_type):
         options.elm_failed = False
         self.adapter_type = adapter_type
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self.reconnect_attempts = 0
 
         portName = portName.strip()
@@ -191,11 +191,6 @@ class Port:
         with self._lock:
             try:
                 if self.hdr:
-                    if self.portType == 0:  # Serial
-                        if hasattr(self.hdr, 'reset_input_buffer'):
-                            self.hdr.reset_input_buffer()
-                        if hasattr(self.hdr, 'reset_output_buffer'):
-                            self.hdr.reset_output_buffer()
                     self.hdr.close()
                     print(_("Port closed: %s") % self.hdr)
                 self.connectionStatus = False
@@ -203,6 +198,7 @@ class Port:
                 print(_("Error closing port: %s") % e)
             finally:
                 self.hdr = None
+                self.connectionStatus = False
 
     def init_wifi(self, reinit=False):
         '''
@@ -345,6 +341,7 @@ class Port:
                         if not self.connectionStatus:
                             return None
                     if self.hdr is None:
+                        self.connectionStatus = False
                         print(_("Port handler is None, cannot write"))
                         return None
                     return self.hdr.sendall(data)
@@ -354,11 +351,13 @@ class Port:
                     else:
                         # Fallback to serial write for Bluetooth-serial adapters
                         if self.hdr is None:
+                            self.connectionStatus = False
                             print(_("Port handler is None, cannot write"))
                             return None
                         return self.hdr.write(data)
                 else:  # Serial/USB
                     if self.hdr is None:
+                        self.connectionStatus = False
                         print(_("Port handler is None, cannot write"))
                         return None
                     return self.hdr.write(data)

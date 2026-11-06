@@ -1,6 +1,6 @@
 import sys
 
-import PyQt5.QtGui as gui
+from ddt4all.qt import gui
 
 PATH_PNG_ODB = ":/icons/odb.png"
 

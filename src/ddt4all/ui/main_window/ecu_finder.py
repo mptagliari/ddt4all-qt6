@@ -1,19 +1,12 @@
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
 from ddt4all.ui.main_window.icons_paths import ICON_OBD
 
 _ = options.translator('ddt4all')
 
-# Optional WebEngine import for enhanced features
-try:
-    import PyQt5.QtWebEngineWidgets as webkitwidgets
-    HAS_WEBENGINE = True
-except ImportError:
-    print(_("Warning: PyQtWebEngine not available. Some features may be limited."))
-    webkitwidgets = None
-    HAS_WEBENGINE = False
+from ddt4all.qt import HAS_WEBENGINE, webengine as webkitwidgets
 
 class EcuFinder(widgets.QDialog):
     def __init__(self, ecuscanner):

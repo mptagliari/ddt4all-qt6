@@ -4,11 +4,12 @@ import json
 import os
 from pathlib import Path
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as gui
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import core
+from ddt4all.qt import gui
+from ddt4all.qt import widgets
 
 import ddt4all.options as options
+from ddt4all.core.elm.elm import close_elm
 from ddt4all.core.ecu.ecu_file import EcuFile
 from ddt4all.core.ecu.ecu_scanner import EcuScanner
 from ddt4all.core.parameters.helpers import zipConvertXML
@@ -46,14 +47,7 @@ import ddt4all.version as version
 
 _ = options.translator('ddt4all')
 
-# Optional WebEngine import for enhanced features
-try:
-    import PyQt5.QtWebEngineWidgets as webkitwidgets
-    HAS_WEBENGINE = True
-except ImportError:
-    print(_("Warning: PyQtWebEngine not available. Some features may be limited."))
-    webkitwidgets = None
-    HAS_WEBENGINE = False
+from ddt4all.qt import HAS_WEBENGINE, webengine as webkitwidgets
 
 BASE_DIR = Path(__file__).resolve().parent
 plugins_base_dir = BASE_DIR / ".." / ".." / "plugins"
@@ -87,7 +81,7 @@ class MainWidget(widgets.QMainWindow):
             msgbox.setIcon(widgets.QMessageBox.Warning)
             msgbox.setText(_("No database found"))
             msgbox.setInformativeText(_("Check documentation"))
-            msgbox.exec_()
+            msgbox.exec()
 
         self.paramview = None
         
@@ -98,11 +92,11 @@ class MainWidget(widgets.QMainWindow):
             
             # Configure WebEngine settings for optimal GitHub wiki experience
             settings = self.docview.settings()
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.JavascriptEnabled, False)  # Disabled to prevent compatibility errors
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.AutoLoadImages, True)     # Better visual experience
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.PluginsEnabled, False)    # Security: disable plugins
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.LocalStorageEnabled, False)  # Security: no local storage
-            settings.setAttribute(webkitwidgets.QWebEngineSettings.LocalContentCanAccessRemoteUrls, False)  # Security
+            settings.setAttribute(webkitwidgets.WebAttribute.JavascriptEnabled, False)  # Disabled to prevent compatibility errors
+            settings.setAttribute(webkitwidgets.WebAttribute.AutoLoadImages, True)     # Better visual experience
+            settings.setAttribute(webkitwidgets.WebAttribute.PluginsEnabled, False)    # Security: disable plugins
+            settings.setAttribute(webkitwidgets.WebAttribute.LocalStorageEnabled, False)  # Security: no local storage
+            settings.setAttribute(webkitwidgets.WebAttribute.LocalContentCanAccessRemoteUrls, False)  # Security
         else:
             # Fallback to basic text widget for documentation
             self.docview = widgets.QTextEdit()
@@ -235,40 +229,40 @@ class MainWidget(widgets.QMainWindow):
         self.toolbar = self.addToolBar(_("ToolBar"))
         self.toolbar.setContextMenuPolicy(core.Qt.PreventContextMenu)
 
-        self.diagaction = widgets.QAction(gui.QIcon(ICON_DTC), _("Read DTC"), self)
+        self.diagaction = gui.QAction(gui.QIcon(ICON_DTC), _("Read DTC"), self)
         self.diagaction.triggered.connect(self.readDtc)
         self.diagaction.setEnabled(False)
 
-        self.log = widgets.QAction(gui.QIcon(ICON_LOG), _("Full log"), self)
+        self.log = gui.QAction(gui.QIcon(ICON_LOG), _("Full log"), self)
         self.log.setCheckable(True)
         self.log.setChecked(options.log_all)
         self.log.triggered.connect(self.changeLogMode)
         if options.dark_mode:
-            self.expert = widgets.QAction(gui.QIcon(ICON_EXPERT_B), _("Expert mode (enable writing)"), self)
+            self.expert = gui.QAction(gui.QIcon(ICON_EXPERT_B), _("Expert mode (enable writing)"), self)
         else:
-            self.expert = widgets.QAction(gui.QIcon(ICON_EXPERT), _("Expert mode (enable writing)"), self)
+            self.expert = gui.QAction(gui.QIcon(ICON_EXPERT), _("Expert mode (enable writing)"), self)
         self.expert.setCheckable(True)
         self.expert.setChecked(options.promode)
         self.expert.triggered.connect(self.changeUserMode)
 
-        self.autorefresh = widgets.QAction(gui.QIcon(ICON_AUTOREFRESH), _("Auto refresh"), self)
+        self.autorefresh = gui.QAction(gui.QIcon(ICON_AUTOREFRESH), _("Auto refresh"), self)
         self.autorefresh.setCheckable(True)
         self.autorefresh.setChecked(options.auto_refresh)
         self.autorefresh.triggered.connect(self.changeAutorefresh)
 
-        self.refresh = widgets.QAction(gui.QIcon(ICON_REFRESH), _("Refresh (one shot)"), self)
+        self.refresh = gui.QAction(gui.QIcon(ICON_REFRESH), _("Refresh (one shot)"), self)
         self.refresh.triggered.connect(self.refreshParams)
         self.refresh.setEnabled(not options.auto_refresh)
 
-        self.hexinput = widgets.QAction(gui.QIcon(ICON_HEX), _("Manual command"), self)
+        self.hexinput = gui.QAction(gui.QIcon(ICON_HEX), _("Manual command"), self)
         self.hexinput.triggered.connect(self.hexeditor)
         self.hexinput.setEnabled(False)
 
-        self.cominput = widgets.QAction(gui.QIcon(ICON_COMMAND), _("Manual request"), self)
+        self.cominput = gui.QAction(gui.QIcon(ICON_COMMAND), _("Manual request"), self)
         self.cominput.triggered.connect(self.command_editor)
         self.cominput.setEnabled(False)
 
-        self.fctrigger = widgets.QAction(gui.QIcon(ICON_FLOWCONTROL), _("Software flow control"), self)
+        self.fctrigger = gui.QAction(gui.QIcon(ICON_FLOWCONTROL), _("Software flow control"), self)
         self.fctrigger.setCheckable(True)
         self.fctrigger.triggered.connect(self.flow_control)
 
@@ -369,27 +363,27 @@ class MainWidget(widgets.QMainWindow):
         # View menu
         view_menu = menu.addMenu(_("View"))
         carlist_order_menu = view_menu.addMenu(_("CarList Order"))
-        self.carlist_order_by_code = widgets.QAction(_("By Project Code"), carlist_order_menu)
+        self.carlist_order_by_code = gui.QAction(_("By Project Code"), carlist_order_menu)
         self.carlist_order_by_code.setCheckable(True)
         self.carlist_order_by_code.setChecked(options.get_carlist_sort_mode() == "code")
         self.carlist_order_by_code.triggered.connect(self.setCarListOrderCode)
         carlist_order_menu.addAction(self.carlist_order_by_code)
-        self.carlist_order_by_name = widgets.QAction(_("By Car Name"), carlist_order_menu)
+        self.carlist_order_by_name = gui.QAction(_("By Car Name"), carlist_order_menu)
         self.carlist_order_by_name.setCheckable(True)
         self.carlist_order_by_name.setChecked(options.get_carlist_sort_mode() == "name")
         self.carlist_order_by_name.triggered.connect(self.setCarListOrderName)
         carlist_order_menu.addAction(self.carlist_order_by_name)
         
         # Make actions mutually exclusive
-        self.carlist_order_group = widgets.QActionGroup(self)
+        self.carlist_order_group = gui.QActionGroup(self)
         self.carlist_order_group.addAction(self.carlist_order_by_code)
         self.carlist_order_group.addAction(self.carlist_order_by_name)
 
         # Theme menu (moved under View menu) with explicit Dark/Light selection
         theme_menu = view_menu.addMenu(_("Theme"))
-        theme_dark_action = widgets.QAction(_("Dark Theme"), theme_menu)
+        theme_dark_action = gui.QAction(_("Dark Theme"), theme_menu)
         theme_dark_action.setCheckable(True)
-        theme_light_action = widgets.QAction(_("Light Theme"), theme_menu)
+        theme_light_action = gui.QAction(_("Light Theme"), theme_menu)
         theme_light_action.setCheckable(True)
 
         show_menu = view_menu.addMenu(_("Panels"))
@@ -403,7 +397,7 @@ class MainWidget(widgets.QMainWindow):
         view_menu.addAction(self.toolbar.toggleViewAction())
 
         # Group theme actions so only one can be active
-        theme_action_group = widgets.QActionGroup(self)
+        theme_action_group = gui.QActionGroup(self)
         theme_action_group.addAction(theme_dark_action)
         theme_action_group.addAction(theme_light_action)
         theme_action_group.setExclusive(True)
@@ -422,9 +416,9 @@ class MainWidget(widgets.QMainWindow):
         theme_menu.addAction(theme_light_action)
 
         actionmenu = self.screenmenu.addMenu(_("Action"))
-        cat_action = widgets.QAction(_("New Category"), actionmenu)
-        screen_action = widgets.QAction(_("New Screen"), actionmenu)
-        rename_action = widgets.QAction(_("Rename"), actionmenu)
+        cat_action = gui.QAction(_("New Category"), actionmenu)
+        screen_action = gui.QAction(_("New Screen"), actionmenu)
+        rename_action = gui.QAction(_("Rename"), actionmenu)
         actionmenu.addAction(cat_action)
         actionmenu.addAction(screen_action)
         actionmenu.addAction(rename_action)
@@ -473,7 +467,7 @@ class MainWidget(widgets.QMainWindow):
         about_content = help_menu.addAction(_("About"))
         about_content.triggered.connect(self.about_content_msg)
 
-        self.setConnected(True)
+        self.setConnected(options.elm is not None and options.elm.connectionStat())
         self.tabbedview.setCurrentIndex(1)
         self.showMaximized()
 
@@ -490,7 +484,7 @@ class MainWidget(widgets.QMainWindow):
             html += f'<tr><td><a href="https://github.com/{name}" style="text-decoration: none; cursor: pointer;" target="_blank">{name}</a>: </td><td>{role}</td></tr>'
         html += '</table>'
         msgbox.setInformativeText(html)
-        msgbox.exec_()
+        msgbox.exec()
 
     def setCarListOrderCode(self):
         """Set CarList sorting to by project code"""
@@ -521,7 +515,7 @@ class MainWidget(widgets.QMainWindow):
         msgbox.setWindowTitle(_("History cleared"))
         msgbox.setText(_("Last selected vehicle and ECU history has been cleared."))
         msgbox.setIcon(widgets.QMessageBox.Information)
-        msgbox.exec_()
+        msgbox.exec()
 
     def clearHistoryWindows(self):
         """Empty the "Ecu Window" and "Screen Window" docks.
@@ -578,7 +572,7 @@ class MainWidget(widgets.QMainWindow):
         msgbox.setWindowTitle(_("Configuration Reset"))
         msgbox.setText(_("The configuration has been reset."))
         msgbox.setIcon(widgets.QMessageBox.Information)
-        msgbox.exec_()
+        msgbox.exec()
 
     def wiki_about(self):
         url = core.QUrl("https://github.com/cedricp/ddt4all/wiki", core.QUrl.TolerantMode)
@@ -637,7 +631,7 @@ class MainWidget(widgets.QMainWindow):
     def show_options_dialog(self):
         """Show options dialog for device settings"""
         options_dialog = MainWindowOptions(self.app)
-        options_dialog.exec_()
+        options_dialog.exec()
 
     def set_can_combo(self, bus):
         # Keep the user's CAN line choice when the combo is rebuilt (e.g. on every screen change);
@@ -675,7 +669,7 @@ class MainWidget(widgets.QMainWindow):
 
     def identEcu(self):
         dialog = EcuFinder(self.ecu_scan)
-        dialog.exec_()
+        dialog.exec()
 
     def changecanspeed(self):
         item = self.canlinecombo.currentIndex()
@@ -724,7 +718,7 @@ class MainWidget(widgets.QMainWindow):
             mbox.setWindowIcon(appIcon)
             mbox.setWindowTitle(version.__appname__)
             mbox.setText("Cannot write to directory " + os.path.dirname(filename))
-            mbox.exec_()
+            mbox.exec()
             return
 
         self.logview.append(_("Zipping XML database... (this can take a few minutes)"))
@@ -743,7 +737,7 @@ class MainWidget(widgets.QMainWindow):
             msgbox.setIcon(widgets.QMessageBox.Warning)
             msgbox.setText(_("No database found"))
             msgbox.setInformativeText(_("Check documentation"))
-            msgbox.exec_()
+            msgbox.exec()
             return
         pim()
         if self.paramview:
@@ -786,7 +780,7 @@ class MainWidget(widgets.QMainWindow):
                 msgbox.setIcon(widgets.QMessageBox.Warning)
                 msgbox.setText(_("No database found"))
                 msgbox.setInformativeText(_("Check documentation"))
-                msgbox.exec_()
+                msgbox.exec()
                 return
             self.paramview.createCategory(necatname)
             self.treeview_params.addTopLevelItem(widgets.QTreeWidgetItem([necatname]))
@@ -910,7 +904,7 @@ class MainWidget(widgets.QMainWindow):
         if options.configuration.get('doip_scan', True):
             msgBox.addButton(doipbutton, widgets.QMessageBox.ActionRole)
         msgBox.addButton(cancelbutton, widgets.QMessageBox.NoRole)
-        msgBox.exec_()
+        msgBox.exec()
 
         if msgBox.clickedButton() == cancelbutton:
             return
@@ -1143,13 +1137,11 @@ class MainWidget(widgets.QMainWindow):
 
     def closeEvent(self, event):
         if self.paramview:
+            self.paramview.timer.stop()
             self.paramview.tester_timer.stop()
         self.snifferview.stopthread()
         super(MainWidget, self).closeEvent(event)
-        try:
-            del options.elm
-        except AttributeError:
-            pass
+        close_elm()
     
     def resizeEvent(self, event):
         """Handle window resize to adjust screen widths while preserving vertical scrolling"""

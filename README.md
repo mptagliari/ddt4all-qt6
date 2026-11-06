@@ -98,8 +98,8 @@ and no `#, fuzzy` remains), keep valid gettext syntax and preserve the original
 ## Requirements
 
 - **Python** `>=3.8` (3.10 or newer recommended)
-- **PyQt5** `>=5.15, <5.16` — GUI framework
-- **PyQtWebEngine** `>=5.15, <5.16` — optional, full HTML documentation view
+- **PySide6** `>=6.8` — GUI framework (follows the desktop style/theme). **PyQt5** `5.15` is still supported as a fallback for legacy systems (Windows 7, 32-bit, Python 3.8); force a binding with `DDT4ALL_QT=pyside6|pyqt5`
+- **PySide6-Addons** (WebEngine) — optional, full HTML documentation view
 - **pyserial** `==3.5` — serial port communication
 - **pyusb** `==1.2.1` — USB access
 - **crcmod** `==1.7` — checksums
@@ -144,7 +144,7 @@ pip install -e ".[dev,can,network,bluetooth]"
 ### Legacy (manual dependencies)
 
 ```bash
-pip install "PyQt5>=5.15,<5.16" "PyQtWebEngine>=5.15,<5.16" pyserial==3.5 pyusb==1.2.1 crcmod==1.7 polib platformdirs
+pip install "PySide6>=6.8" pyserial==3.5 pyusb==1.2.1 crcmod==1.7 polib platformdirs
 ```
 
 ---
@@ -216,7 +216,7 @@ The plugin architecture allows custom procedures for other ECUs and brands.
 
 ### Core modules
 
-- `src/ddt4all/main.py` — entry point (PyQt GUI + connection handling)
+- `src/ddt4all/main.py` — entry point (PySide6 GUI + connection handling)
 - `src/ddt4all/version.py` — version / codename / contributors
 - `src/ddt4all/options.py` — configuration & device settings persistence
 - `src/ddt4all/file_manager.py` — file and directory utilities
@@ -292,7 +292,7 @@ Prebuilt installers are published on the [Releases page](https://github.com/cedr
 
 ### Installation
 
-- **PyQtWebEngine missing** — DDT4All still works; only the full web-based
+- **WebEngine (PySide6-Addons) missing** — DDT4All still works; only the full web-based
   documentation view is limited (graceful fallback).
 - **Windows serial fails** — reinstall `pywin32` and run
   `python -m pywin32_postinstall -install`, ideally with admin rights.

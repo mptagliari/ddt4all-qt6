@@ -1,4 +1,4 @@
-import PyQt5.QtWidgets as widgets
+from ddt4all.qt import widgets
 
 from ddt4all.core.ecu.ecu_request import EcuRequest
 import ddt4all.options as options

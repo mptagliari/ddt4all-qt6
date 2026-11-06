@@ -22,9 +22,9 @@ import sys
 import time
 import traceback
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as qtgui
-import PyQt5.QtWidgets as gui
+from ddt4all.qt import core
+from ddt4all.qt import gui as qtgui
+from ddt4all.qt import widgets as gui
 
 #: window icon — same Qt resource as the other ddt4all plugins
 APP_ICON = ":icons/obd.png"
@@ -167,8 +167,8 @@ class NaturalItem(gui.QTreeWidgetItem):
 class MacroWorker(core.QThread):
     """Runs the engine in a dedicated thread (the GUI stays responsive)."""
 
-    log_line = core.pyqtSignal(str)
-    done = core.pyqtSignal(str)
+    log_line = core.Signal(str)
+    done = core.Signal(str)
 
     def __init__(self, engine, kind, target, name='', parent=None,
                  elm_log=None):
@@ -719,4 +719,4 @@ class MacroRunnerDialog(gui.QDialog):
 
 def run_dialog(plugin_dir, title=None):
     """Common entry point of the two ddt4all plugins."""
-    MacroRunnerDialog(plugin_dir, title=title).exec_()
+    MacroRunnerDialog(plugin_dir, title=title).exec()

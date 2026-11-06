@@ -5,6 +5,7 @@
 
 from datetime import datetime
 import glob
+import logging
 from pathlib import Path
 import os
 import platform
@@ -26,6 +27,7 @@ from ddt4all.file_manager import get_logs_dir
 import ddt4all.options as options
 
 _ = options.translator('ddt4all')
+logger = logging.getLogger(__name__)
 
 # SNAT/DNAT entries for CAN address mapping
 # Fixed: Using proper hex addresses instead of string values
@@ -293,6 +295,22 @@ def is_els27_device(port, timeout=2):
     return False, "No ELS27 response at any baud rate"
 
 
+def close_elm():
+    """Detach the application connection before releasing its transport."""
+    previous = options.elm
+    logger.debug("Detach application ELM id=%s", id(previous) if previous is not None else None)
+    options.elm = None
+    if previous is not None:
+        previous.close()
+
+
+def replace_elm(port, speed, adapter, maxspeed="No"):
+    """Release the old transport before opening an exclusive serial connection."""
+    close_elm()
+    options.elm = ELM(port, speed, adapter, maxspeed)
+    return options.elm
+
+
 def reconnect_elm():
     """Enhanced reconnection with device-specific handling"""
     ports = get_available_ports()
@@ -321,7 +339,7 @@ def reconnect_elm():
                     saved_settings = options.get_device_settings(device_key, port)
                     speed = saved_settings.get('baudrate', options.port_speed) if saved_settings else options.port_speed
 
-                    options.elm = ELM(port, speed, current_adapter)
+                    replace_elm(port, speed, current_adapter)
                     if options.elm.connectionStatus:
                         return True
                 except Exception as e:
@@ -351,7 +369,7 @@ def reconnect_elm():
             print(f"Trying {current_adapter} device at {port} with optimal settings")
 
         try:
-            options.elm = ELM(port, settings['baudrate'], current_adapter)
+            replace_elm(port, settings['baudrate'], current_adapter)
             if options.elm.connectionStatus:
                 options.port_name = port
                 options.port_speed = settings['baudrate']
@@ -419,6 +437,17 @@ class ELM:
     connectionStatus = False
 
     def __init__(self, portName, rate, adapter_type, maxspeed="No"):
+        logger.debug("Create ELM id=%s adapter=%s baud=%s", id(self), adapter_type, rate)
+        self.port = None
+        self.lf = self.vf = 0
+        self.connectionStatus = False
+        try:
+            self._initialize(portName, rate, adapter_type, maxspeed)
+        except Exception:
+            self.close()
+            raise
+
+    def _initialize(self, portName, rate, adapter_type, maxspeed):
         self.adapter_type = adapter_type
         options.port_speed = rate
         self.stpx_enabled = False  # Initialize STPX mode flag
@@ -436,12 +465,12 @@ class ELM:
                     options.elm_failed = True
                     options.last_error = _("Port initialization failed")
                     self.connectionStatus = False
-                    self.__del__()
+                    self.close()
                     continue
 
             if options.elm_failed:
                 self.connectionStatus = False
-                self.__del__()
+                self.close()
                 # Try one other speed ...
                 continue
 
@@ -474,7 +503,7 @@ class ELM:
             else:
                 options.elm_failed = True
                 options.last_error = _("Port connection failed - port object is invalid")
-                self.__del__()
+                self.close()
                 continue
 
             # PIC_ELM_ATI_DETECTION_FIX: identify generic ELM adapters with ATI, not only ATZ.
@@ -546,7 +575,7 @@ class ELM:
             else:
                 options.elm_failed = True
                 options.last_error = _("No ELM interface on port") + " %s" % portName
-                self.__del__()
+                self.close()
         try:
             maxspeed = int(maxspeed)
             # if options.opt_stpx_full:
@@ -664,21 +693,30 @@ class ELM:
         except Exception:
             raise Exception((_("Not supported baudrate %s") % str(baudrate)))
 
+    def close(self):
+        """Idempotent cleanup; never send adapter commands from a destructor."""
+        self.connectionStatus = False
+        port = getattr(self, 'port', None)
+        self.port = None
+        if port is not None and hasattr(port, 'close'):
+            logger.debug("Close ELM id=%s port_id=%s", id(self), id(port), stack_info=True)
+            port.close()
+        for name in ('lf', 'vf'):
+            stream = getattr(self, name, 0)
+            if stream:
+                stream.close()
+                setattr(self, name, 0)
+
     def __del__(self):
         try:
-            print(_("ELM reset..."))
-            # Check if port exists and is valid before attempting reset
-            if hasattr(self, 'port') and self.port is not None and hasattr(self.port, 'write'):
-                self.port.write("ATZ\r".encode("utf-8"))
-                self.port.close()
+            self.close()
         except (AttributeError, OSError, TypeError):
-            # Handle all possible errors during cleanup
             pass
 
     def connectionStat(self):
-        if hasattr(self, 'port') and self.port is not None and hasattr(self.port, 'connectionStatus'):
-            return self.port.connectionStatus
-        return False
+        port = getattr(self, 'port', None)
+        return bool(port is not None and port.connectionStatus and
+                    port.hdr is not None and getattr(port.hdr, 'is_open', True))
 
     def clear_cache(self):
         ''' Clear L2 cache before screen update
@@ -1488,6 +1526,9 @@ class ELM:
                 return "WRONG RESPONSE"
 
     def send_raw(self, command):
+        if not options.simulation_mode and not self.connectionStat():
+            self.connectionStatus = False
+            raise ConnectionError("ELM transport is closed")
         command = command.upper()
         tb = options.dtt4all_time()  # start time
         # save command to log
@@ -1498,6 +1539,9 @@ class ELM:
         # send command
         if not options.simulation_mode:
             self.port.write(str(command + "\r").encode("utf-8"))  # send command
+            if not self.connectionStat():
+                self.connectionStatus = False
+                raise ConnectionError("ELM transport write failed")
         # receive and parse responce
         while True:
             tc = options.dtt4all_time()
@@ -1861,119 +1905,124 @@ class ELM:
 
 
 def elm_checker(port, speed, adapter, logview, app):
-    """Enhanced ELM327 checker with better error handling and device detection"""
-    good = 0
-    total = 0
-    pycom = 0
-    vers = ''
-
+    probe = None
     try:
-        # Check for saved settings first, use optimal settings as fallback
-        device_key = DeviceManager.normalize_adapter_type(adapter)
-        saved_settings = options.get_device_settings(device_key, port)
+        """Enhanced ELM327 checker with better error handling and device detection"""
+        good = 0
+        total = 0
+        pycom = 0
+        vers = ''
 
-        if saved_settings and 'baudrate' in saved_settings:
-            settings = saved_settings
-            speed = settings.get('baudrate', speed)
-            logview.append(_("Using saved device settings"))
-        else:
-            settings = DeviceManager.get_optimal_settings(adapter)
-            speed = settings.get('baudrate', speed)
-            logview.append(_("Using optimal device settings"))
+        try:
+            # Check for saved settings first, use optimal settings as fallback
+            device_key = DeviceManager.normalize_adapter_type(adapter)
+            saved_settings = options.get_device_settings(device_key, port)
 
-        logview.append(_("Connecting to device at port: ") + str(port))
-        logview.append(_("Using baudrate: ") + str(speed))
-
-        # For ELS27 adapters, do a quick pre-test to verify device presence
-        if adapter == "ELS27":
-            logview.append(_("Testing for ELS27 device..."))
-            app.processEvents()  # Update UI
-            is_els27, response = is_els27_device(port, timeout=3)
-            if is_els27:
-                logview.append(_("ELS27 device detected: ") + response)
-                # Extract baud rate from response if found
-                if "at " in response.lower() and "baud" in response.lower():
-                    try:
-                        baud_str = response.lower().split("at ")[1].split(" baud")[0]
-                        detected_baud = int(baud_str)
-                        if detected_baud != speed:
-                            logview.append(_("Using detected baud rate: ") + str(detected_baud))
-                            speed = detected_baud
-                    except Exception:
-                        pass
+            if saved_settings and 'baudrate' in saved_settings:
+                settings = saved_settings
+                speed = settings.get('baudrate', speed)
+                logview.append(_("Using saved device settings"))
             else:
-                logview.append(_("Warning: No ELS27 response detected"))
-                logview.append(_("Will attempt connection anyway..."))
+                settings = DeviceManager.get_optimal_settings(adapter)
+                speed = settings.get('baudrate', speed)
+                logview.append(_("Using optimal device settings"))
 
-        options.elm = ELM(port, speed, adapter)
+            logview.append(_("Connecting to device at port: ") + str(port))
+            logview.append(_("Using baudrate: ") + str(speed))
 
-        if options.elm_failed:
-            logview.append(_("Connection failed: ") + str(options.last_error))
+            # For ELS27 adapters, do a quick pre-test to verify device presence
+            if adapter == "ELS27":
+                logview.append(_("Testing for ELS27 device..."))
+                app.processEvents()  # Update UI
+                is_els27, response = is_els27_device(port, timeout=3)
+                if is_els27:
+                    logview.append(_("ELS27 device detected: ") + response)
+                    # Extract baud rate from response if found
+                    if "at " in response.lower() and "baud" in response.lower():
+                        try:
+                            baud_str = response.lower().split("at ")[1].split(" baud")[0]
+                            detected_baud = int(baud_str)
+                            if detected_baud != speed:
+                                logview.append(_("Using detected baud rate: ") + str(detected_baud))
+                                speed = detected_baud
+                        except Exception:
+                            pass
+                else:
+                    logview.append(_("Warning: No ELS27 response detected"))
+                    logview.append(_("Will attempt connection anyway..."))
+
+            probe = ELM(port, speed, adapter)
+
+            if options.elm_failed:
+                logview.append(_("Connection failed: ") + str(options.last_error))
+                return False
+
+            probe.portTimeout = 5
+
+            # Test basic connectivity
+            logview.append(_("Testing basic connectivity..."))
+            test_response = probe.send_raw("ATZ")  # Reset command
+            if not test_response or "ELM" not in test_response.upper():
+                logview.append(_("Warning: Device may not be ELM327 compatible"))
+            else:
+                logview.append(_("ELM327 device detected successfully"))
+
+            # Get version information
+            version_response = probe.send_raw("ATI")
+            if version_response:
+                vers = version_response.strip()
+                logview.append(_("Device version: ") + vers)
+
+        except Exception as e:
+            logview.append(_("Connection error: ") + str(e))
             return False
 
-        options.elm.portTimeout = 5
+        for st in cmdb.split('#'):
+            cm = st.split(';')
 
-        # Test basic connectivity
-        logview.append(_("Testing basic connectivity..."))
-        test_response = options.elm.send_raw("ATZ")  # Reset command
-        if not test_response or "ELM" not in test_response.upper():
-            logview.append(_("Warning: Device may not be ELM327 compatible"))
-        else:
-            logview.append(_("ELM327 device detected successfully"))
+            if len(cm) > 1:
+                cmd0 = cm[0].strip()
+                cmd1 = cm[1].upper().strip()
+                cmd2 = cm[2].upper().strip()
 
-        # Get version information
-        version_response = options.elm.send_raw("ATI")
-        if version_response:
-            vers = version_response.strip()
-            logview.append(_("Device version: ") + vers)
-
-    except Exception as e:
-        logview.append(_("Connection error: ") + str(e))
-        return False
-
-    for st in cmdb.split('#'):
-        cm = st.split(';')
-
-        if len(cm) > 1:
-            cmd0 = cm[0].strip()
-            cmd1 = cm[1].upper().strip()
-            cmd2 = cm[2].upper().strip()
-
-            if 'C' not in cmd1:
-                continue
-
-            if len(cmd2) > 1:
-                rslt = options.elm.send_raw(cmd2)
-                resp = rslt.upper().strip()
-
-                if 'H' in cmd1:
+                if 'C' not in cmd1:
                     continue
 
-                total += 1
-                # Debug log
-                print(cmd2 + " " + resp)
+                if len(cmd2) > 1:
+                    rslt = probe.send_raw(cmd2)
+                    resp = rslt.upper().strip()
 
-                if '?' in resp:
-                    chre = '<font color=red>[' + _('FAIL') + ']</font>'
-                    if 'P' in cmd1:
-                        pycom += 1
-                # Timeout is not an error
-                elif 'TIMEOUT' in resp:
-                    chre = '<font color=green>[' + _('OK/TIMEOUT') + ']</font>'
-                    good += 1
-                    vers = cmd0
-                else:
-                    chre = '<font color=green>[' + _('OK') + ']</font>'
-                    good += 1
-                    vers = cmd0
+                    if 'H' in cmd1:
+                        continue
 
-                logview.append("%5s %10s %s" % (cmd0, cmd2, chre))
-                app.processEvents()
+                    total += 1
+                    # Debug log
+                    print(cmd2 + " " + resp)
 
-    options.elm.__del__()
+                    if '?' in resp:
+                        chre = '<font color=red>[' + _('FAIL') + ']</font>'
+                        if 'P' in cmd1:
+                            pycom += 1
+                    # Timeout is not an error
+                    elif 'TIMEOUT' in resp:
+                        chre = '<font color=green>[' + _('OK/TIMEOUT') + ']</font>'
+                        good += 1
+                        vers = cmd0
+                    else:
+                        chre = '<font color=green>[' + _('OK') + ']</font>'
+                        good += 1
+                        vers = cmd0
 
-    if pycom > 0:
-        logview.append('<font color=red>' + _('Incompatible adapter on ARM core') + '</font> \n')
-    logview.append(
-        _('Result: ') + str(good) + _(' succeeded from ') + str(total) + '\n' + _('ELM Max version:') + vers + '\n')
-    return True
+                    logview.append("%5s %10s %s" % (cmd0, cmd2, chre))
+                    app.processEvents()
+
+
+        if pycom > 0:
+            logview.append('<font color=red>' + _('Incompatible adapter on ARM core') + '</font> \n')
+        logview.append(
+            _('Result: ') + str(good) + _(' succeeded from ') + str(total) + '\n' + _('ELM Max version:') + vers + '\n')
+        return True
+
+    finally:
+        if probe is not None:
+            probe.close()

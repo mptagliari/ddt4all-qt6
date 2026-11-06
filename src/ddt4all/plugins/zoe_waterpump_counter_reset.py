@@ -4,19 +4,18 @@
 # Zoe EVC water pump counter reset values (low, medium, high speed + timer)
 # cf error code: SYST ELEC A CONTROLLER
 
-import PyQt5.QtCore as core
-import PyQt5.QtGui as qtgui
-import PyQt5.QtWidgets as gui
-from PyQt5.QtWidgets import (
-    QTableWidget,
-    QTableWidgetItem,
-    QLabel
-)
+from ddt4all.qt import core
+from ddt4all.qt import gui as qtgui
+from ddt4all.qt import widgets as gui
 
 from ddt4all.core.ecu.ecu_file import EcuFile
 import ddt4all.options as options
 
 _ = options.translator('ddt4all')
+
+QTableWidget = gui.QTableWidget
+QTableWidgetItem = gui.QTableWidgetItem
+QLabel = gui.QLabel
 
 plugin_name = _("Zoe water pump Reset")
 category = _("EVC Tools")
@@ -251,4 +250,4 @@ class Virginizer(gui.QDialog):
 
 def plugin_entry():
     v = Virginizer()
-    v.exec_()
+    v.exec()
