@@ -32,3 +32,7 @@ A personal fork of [cedricp/ddt4all](https://github.com/cedricp/ddt4all) (DDT4AL
 - Diagnostic tools talk to real vehicles. Never send write, reflash, actuator or coding commands to a vehicle or ECU without explicit owner authorization; read-only scans and offline/simulated ELM runs are fine.
 - Prefer the offline ELM emulator and recorded sessions for tests; never require a live vehicle in the test suite.
 - Keep upstream strings, locale files and license headers intact (GPL-3.0).
+
+## Repository visibility
+
+This fork (`mptagliari/ddt4all-qt6`) is **public**, as is upstream `cedricp/ddt4all`. Never commit personal data, vehicle identifiers (VIN, plates), logs from real vehicles, credentials or content from private projects.
